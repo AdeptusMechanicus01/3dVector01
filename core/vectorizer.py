@@ -457,3 +457,7 @@ class Vectorizer:
         self.roi = None
         self.image = None
         self.image_path = None
+    
+    def clear_contours(self) -> None:
+        """Очистить только контуры"""
+        self.contours = []
