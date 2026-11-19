@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QComboBox, QSlider, QSplitter, QFileDialog, QMessageBox,
     QScrollArea, QFrame, QGraphicsView, QGraphicsScene
 )
-from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QTimer, QEvent, QMouseEvent, QWheelEvent
-from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush
+from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QTimer, QEvent
+from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush, QMouseEvent, QWheelEvent
 
 try:
     import pyvista as pv
