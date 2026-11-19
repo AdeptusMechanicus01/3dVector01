@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QComboBox, QSlider, QSplitter, QFileDialog, QMessageBox,
     QScrollArea, QFrame
 )
-from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRect, QTimer
+from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRect, QTimer, QPointF
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QPainterPath
 
 from core.vectorizer import Vectorizer, Contour, ROI
