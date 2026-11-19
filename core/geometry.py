@@ -317,7 +317,7 @@ class MeshGenerator:
         Generate mesh from skeleton by creating capsules for each bone
         
         Args:
-            joints: Dictionary of joint IDs to joint data with 'worldPosition'
+            joints: Dictionary of joint IDs to Joint objects or dicts with 'worldPosition'
             bones: List of bone data with 'from', 'to', 'region'
             capsule_radii: Dictionary of region names to radius values
             
@@ -346,17 +346,9 @@ class MeshGenerator:
             from_joint = joints[from_id]
             to_joint = joints[to_id]
             
-            from_pos = np.array([
-                from_joint.get('worldPosition', {}).get('x', 0),
-                from_joint.get('worldPosition', {}).get('y', 0),
-                from_joint.get('worldPosition', {}).get('z', 0)
-            ])
-            
-            to_pos = np.array([
-                to_joint.get('worldPosition', {}).get('x', 0),
-                to_joint.get('worldPosition', {}).get('y', 0),
-                to_joint.get('worldPosition', {}).get('z', 0)
-            ])
+            # Extract positions - handle both Joint objects and dicts
+            from_pos = self._get_joint_position(from_joint)
+            to_pos = self._get_joint_position(to_joint)
             
             # Get radius for this region
             radius = capsule_radii.get(region, 0.05)
@@ -371,6 +363,34 @@ class MeshGenerator:
             return None
         
         return self.combine_meshes(meshes)
+    
+    def _get_joint_position(self, joint: Any) -> np.ndarray:
+        """
+        Extract position from joint (handles both Joint objects and dicts)
+        
+        Args:
+            joint: Joint object or dict with position data
+            
+        Returns:
+            Position as numpy array [x, y, z]
+        """
+        # Check if it's a Joint object (has world_position attribute)
+        if hasattr(joint, 'world_position'):
+            wp = joint.world_position
+            return np.array([float(wp[0]), float(wp[1]), float(wp[2])])
+        # Check if it's a dict with worldPosition
+        elif isinstance(joint, dict) and 'worldPosition' in joint:
+            wp = joint['worldPosition']
+            if isinstance(wp, dict):
+                return np.array([wp.get('x', 0), wp.get('y', 0), wp.get('z', 0)])
+            elif isinstance(wp, (list, tuple)) and len(wp) >= 3:
+                return np.array([float(wp[0]), float(wp[1]), float(wp[2])])
+        # Check if it's a dict with x, y, z directly
+        elif isinstance(joint, dict):
+            return np.array([joint.get('x', 0), joint.get('y', 0), joint.get('z', 0)])
+        # Fallback
+        else:
+            return np.array([0.0, 0.0, 0.0])
     
     def combine_meshes(self, meshes: List[Mesh]) -> Optional[Mesh]:
         """Combine multiple meshes into one"""

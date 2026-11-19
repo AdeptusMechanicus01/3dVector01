@@ -112,7 +112,7 @@ class ImageCanvas(QLabel):
             
             painter.drawPath(path)
         
-        painter.end()
+        painter.setPen(old_pen)
     
     def _draw_roi(self, pixmap: QPixmap) -> None:
         """Рисуем область интереса"""
@@ -124,7 +124,7 @@ class ImageCanvas(QLabel):
             x, y, w, h = self._roi.x, self._roi.y, self._roi.width, self._roi.height
             painter.drawRect(QRect(int(x), int(y), int(w), int(h)))
         
-        painter.end()
+        painter.setPen(old_pen)
     
     def fit_to_viewport(self) -> None:
         """Подгоняем изображение под размер виджета"""
@@ -257,7 +257,7 @@ class ContourPreview(QLabel):
             
             painter.drawPath(path)
         
-        painter.end()
+        painter.setPen(old_pen)
         self.setPixmap(pixmap)
 
 

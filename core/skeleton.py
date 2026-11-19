@@ -386,12 +386,117 @@ class Skeleton:
         
         return 'other'
     
-    def calculate_world_positions(self) -> None:
-        """Calculate world positions for all joints"""
-        # For now, just set world position = local position
-        # In a full implementation, this would traverse the hierarchy
+    def _get_center_x(self) -> float:
+        """Get the center X coordinate of all joints"""
+        if not self.joints:
+            return 0.0
+        xs = [j.x for j in self.joints.values()]
+        return sum(xs) / len(xs)
+    
+    def calculate_world_positions(self, scale: float = 1.0) -> None:
+        """
+        Calculate world positions for all joints from 2D canvas coordinates
+        
+        According to the format:
+        - X=0 is center
+        - Y=0 is floor
+        - Character faces +Z
+        - L=+X (left is positive X)
+        - nx = x / natural_height
+        - ny = (y - floor) / natural_height
+        
+        Args:
+            scale: Scale factor to convert 2D coordinates to 3D (meters)
+        """
+        # Get parameters
+        natural_height = self.parameters.get('natural_height_u', 180.0)
+        
+        # Calculate floor height in 2D coordinates
+        floor_y = self.calculate_floor_height()
+        
+        # Convert all joints to 3D
         for joint in self.joints.values():
-            joint.world_position = joint.local_position
+            # Convert 2D canvas coordinates to 3D world coordinates
+            # X axis: canvas X -> world X (L=+X)
+            # Y axis: canvas Y -> world Z (up)
+            # Z axis: canvas depth -> world Y (forward/backward, but we use 0 for now)
+            
+            # Scale factor from normalized coordinates
+            if natural_height > 0:
+                # If nx, ny are available, use them
+                if joint.nx != 0 or joint.ny != 0:
+                    world_x = joint.nx * scale
+                    world_z = joint.ny * scale
+                else:
+                    # Use x, y coordinates directly
+                    world_x = (joint.x / natural_height) * scale
+                    world_z = ((joint.y - floor_y) / natural_height) * scale
+            else:
+                world_x = joint.x * scale / 100.0  # Assume x is in pixels, convert to meters
+                world_z = (joint.y - floor_y) * scale / 100.0
+            
+            # Y coordinate is always 0 (on the floor) for 2D joints
+            # In 3D space, we'll use:
+            # - X: left-right (L=+X)
+            # - Y: depth (forward/backward from camera)
+            # - Z: height (up-down)
+            # But for simplicity, we'll use:
+            # - X: left-right
+            # - Y: height (up-down)
+            # - Z: depth (forward/backward)
+            
+            # Actually, let's use standard convention:
+            # - X: left-right (L=+X)
+            # - Y: up-down
+            # - Z: forward-backward
+            # But character faces +Z, so we need to adjust
+            
+            # From the JSON notes: "персонаж смотрит +Z"
+            # So +Z is forward (facing direction)
+            # +X is left
+            # +Y is up
+            
+            # In 2D canvas:
+            # - x: left-right (0 is center, -x is right, +x is left)
+            # - y: up-down (0 is floor, +y is up)
+            
+            # Wait, let's reconsider based on the JSON:
+            # "ось X=0 — центр; пол Y=0 по стопам"
+            # So in 2D: X=0 is center, Y=0 is floor
+            # "персонаж смотрит +Z; L=+X"
+            # So in 3D: +Z is forward, +X is left
+            
+            # Converting 2D to 3D:
+            # - 2D x (left-right) -> 3D X (left is positive)
+            # - 2D y (up-down from floor) -> 3D Y (height)
+            # - 2D depth (not present in 2D) -> 3D Z (forward, default 0)
+            
+            world_y = 0.0  # All joints start on the floor
+            world_z = 0.0  # No depth in 2D
+            
+            # But we need height! The y coordinate in 2D is the height from floor
+            # So we should use y as the Y coordinate (height)
+            
+            # Let's use:
+            # - X: x coordinate (left-right), with center at 0
+            # - Y: y coordinate (height from floor)
+            # - Z: 0 (no depth)
+            
+            # But we need to convert from canvas coordinates to world coordinates
+            # Canvas: x=0 is center, y=0 is floor
+            # World: X=0 is center, Y=0 is floor, Z=0 is origin
+            
+            # Scale down from canvas coordinates
+            # Assuming canvas coordinates are in pixels
+            # We want meters: 180 cm = 1.8 m
+            
+            # Simple conversion:
+            world_x = (joint.x - self._get_center_x()) * scale / 100.0
+            world_y = (joint.y - floor_y) * scale / 100.0
+            world_z = 0.0
+            
+            joint.world_position = (float(world_x), float(world_y), float(world_z))
+            joint.local_position = joint.world_position
     
     def calculate_floor_height(self) -> float:
         """Calculate floor height based on foot joints"""
@@ -873,6 +978,9 @@ class Skeleton:
         
         if 'editor' in data and 'nextId' in data['editor']:
             self._next_id = data['editor']['nextId']
+        
+        # Calculate 3D world positions from 2D coordinates
+        self.calculate_world_positions(scale=1.0)
     
     def to_json(self, indent: int = 2) -> str:
         """Export skeleton to JSON string"""
