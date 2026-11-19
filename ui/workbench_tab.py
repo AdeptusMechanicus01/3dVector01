@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QComboBox, QSlider, QSplitter, QFileDialog, QMessageBox,
     QScrollArea, QFrame, QGraphicsView, QGraphicsScene
 )
-from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QTimer, QEvent
-from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush, QMouseEvent, QWheelEvent
+from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QTimer, QEvent, QMouseEvent, QWheelEvent
+from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush
 
 try:
     import pyvista as pv
@@ -55,42 +55,53 @@ class Viewport3D(QWidget):
     
     def _init_viewport(self) -> None:
         """Initialize the 3D viewport"""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
         if not PV_AVAILABLE:
             # Create a fallback label
             self.lbl_fallback = QLabel("PyVista not available. Install with: pip install pyvista pyvistaqt")
             self.lbl_fallback.setStyleSheet("color: #f87171; font: 14px 'System';")
-            layout = QVBoxLayout(self)
             layout.addWidget(self.lbl_fallback)
+            self.setLayout(layout)
+            self.setMinimumSize(400, 400)
             return
         
-        # Create PyVista plotter
-        self._plotter = pv.Plotter()
-        
-        # Configure plotter
-        self._plotter.set_background(Colors.VIEWPORT_BG)
-        
-        # Add grid
-        if self._show_grid:
-            self._add_grid()
-        
-        # Add axis
-        if self._show_axis:
-            self._add_axis()
-        
-        # Set up camera
-        self._plotter.camera_position = 'xy'
-        self._plotter.camera.zoom(1.5)
-        
-        # Store in widget
-        self._plotter.show(auto_close=False)
-        
-        # Add to layout
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._plotter.ren_win)
-        
-        # Set minimum size
-        self.setMinimumSize(400, 400)
+        try:
+            # Create PyVista plotter
+            self._plotter = pv.Plotter()
+            
+            # Configure plotter
+            self._plotter.set_background(Colors.VIEWPORT_BG)
+            
+            # Add grid
+            if self._show_grid:
+                self._add_grid()
+            
+            # Add axis
+            if self._show_axis:
+                self._add_axis()
+            
+            # Set up camera
+            self._plotter.camera_position = 'xy'
+            self._plotter.camera.zoom(1.5)
+            
+            # Store in widget
+            self._plotter.show(auto_close=False)
+            
+            # Add to layout
+            layout.addWidget(self._plotter.ren_win)
+            self.setLayout(layout)
+            
+            # Set minimum size
+            self.setMinimumSize(400, 400)
+        except Exception as e:
+            # Fallback if PyVista fails
+            self.lbl_fallback = QLabel(f"PyVista error: {str(e)}")
+            self.lbl_fallback.setStyleSheet("color: #f87171; font: 14px 'System';")
+            layout.addWidget(self.lbl_fallback)
+            self.setLayout(layout)
+            self.setMinimumSize(400, 400)
     
     def _add_grid(self) -> None:
         """Add grid to viewport"""
@@ -99,7 +110,13 @@ class Viewport3D(QWidget):
         
         # Create grid
         grid = pv.Plane(center=(0, 0, 0), direction=(0, 0, 1), i_size=10, j_size=10)
-        grid.lines('x').lines('y').plot(color=Colors.GRID_COLOR, line_width=1, opacity=0.5)
+        grid_lines = grid.lines('x').lines('y')
+        self._plotter.add_mesh(
+            grid_lines,
+            color=Colors.GRID_COLOR,
+            line_width=1,
+            opacity=0.5
+        )
     
     def _add_axis(self) -> None:
         """Add coordinate axis to viewport"""
@@ -184,7 +201,7 @@ class Viewport3D(QWidget):
         for i, slide in enumerate(self._reference_slides):
             # For now, create a simple plane with the image
             # In a full implementation, this would be a proper image plane
-            if slide.image is not None:
+            if slide.image is not None and len(slide.image.shape) >= 2:
                 h, w = slide.image.shape[:2]
                 plane = pv.Plane(center=slide.position, direction=(0, 0, 1), i_size=w/100, j_size=h/100)
                 self._plotter.add_mesh(plane, name=f"slide_{i}", color='white', opacity=slide.opacity)

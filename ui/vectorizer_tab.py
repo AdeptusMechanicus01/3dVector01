@@ -576,17 +576,22 @@ class VectorizerTab(QWidget):
         if len(img.shape) == 3:
             height, width, channels = img.shape
             if channels == 3:
-                # RGB image
-                qimg = QImage(img.data, width, height, QImage.Format_RGB888)
+                # RGB image - ensure contiguous array
+                if not img.flags['C_CONTIGUOUS']:
+                    img = np.ascontiguousarray(img)
+                qimg = QImage(img.data, width, height, QImage.Format.Format_RGB888)
             elif channels == 4:
-                # RGBA image
-                qimg = QImage(img.data, width, height, QImage.Format_ARGB32)
+                # RGBA image - ensure contiguous array
+                if not img.flags['C_CONTIGUOUS']:
+                    img = np.ascontiguousarray(img)
+                qimg = QImage(img.data, width, height, QImage.Format.Format_ARGB32)
             else:
                 return
         elif len(img.shape) == 2:
-            # Grayscale image
-            height, width = img.shape
-            qimg = QImage(img.data, width, height, QImage.Format_Grayscale8)
+            # Grayscale image - ensure contiguous array
+            if not img.flags['C_CONTIGUOUS']:
+                img = np.ascontiguousarray(img)
+            qimg = QImage(img.data, width, height, QImage.Format.Format_Grayscale8)
         else:
             return
         

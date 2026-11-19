@@ -344,7 +344,7 @@ class MainWindow(QMainWindow):
     def _load_initial_files(self) -> None:
         """Load initial files from repository if available"""
         # Check if we have test assets in the repository
-        repo_path = Path(__file__).parent.parent.parent
+        repo_path = Path(__file__).parent.parent
         
         test_files = [
             'front.bmp', 'back.bmp', 'left.bmp', 'right.bmp',
@@ -587,33 +587,19 @@ class MainWindow(QMainWindow):
     
     def on_about(self) -> None:
         """Handle about action"""
-        QMessageBox.about(
-            self, "About 3D Vector Pipeline",
-            "<h2>3D Vector Pipeline</h2>
-"
-            "<p>Version 2.0.0</p>
-"
-            "<p>A unified desktop application for 3D character modeling from raster images.</p>
-"
-            "<p>Features:</p>
-"
-            "<ul>
-"
-            "<li>Vectorization of raster images (BMP, PNG, JPG)</li>
-"
-            "<li>Skeleton construction with mirror symmetry</li>
-"
-            "<li>3D mesh generation using Marching Cubes</li>
-"
-            "<li>Sculpting tools (Inflate, Grab, Smooth)</li>
-"
-            "<li>GLB export for Unity</li>
-"
-            "</ul>
-"
-            "<p>Technologies: Python, PySide6, PyVista, OpenCV, scikit-image, trimesh</p>
-"
-        )
+        about_html = """<h2>3D Vector Pipeline</h2>
+<p>Version 2.0.0</p>
+<p>A unified desktop application for 3D character modeling from raster images.</p>
+<p>Features:</p>
+<ul>
+<li>Vectorization of raster images (BMP, PNG, JPG)</li>
+<li>Skeleton construction with mirror symmetry</li>
+<li>3D mesh generation using Marching Cubes</li>
+<li>Sculpting tools (Inflate, Grab, Smooth)</li>
+<li>GLB export for Unity</li>
+</ul>
+<p>Technologies: Python, PySide6, PyVista, OpenCV, scikit-image, trimesh</p>"""
+        QMessageBox.about(self, "About 3D Vector Pipeline", about_html)
     
     # Signal handlers
     def on_images_loaded(self, count: int) -> None:

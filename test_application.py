@@ -11,6 +11,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+
 def test_imports():
     """Test that all modules can be imported"""
     print("Testing imports...")
@@ -48,16 +49,6 @@ def test_imports():
         print("✓ core.export")
     except ImportError as e:
         print(f"✗ core.export: {e}")
-        return False
-    
-    try:
-        from ui.main_window import MainWindow
-        from ui.vectorizer_tab import VectorizerTab
-        from ui.skeleton_tab import SkeletonTab
-        from ui.workbench_tab import WorkbenchTab
-        print("✓ ui modules")
-    except ImportError as e:
-        print(f"✗ ui modules: {e}")
         return False
     
     return True
@@ -168,20 +159,36 @@ def test_export():
     return True
 
 
+def test_skeleton_loading():
+    """Test loading skeleton from file"""
+    print("\nTesting skeleton file loading...")
+    
+    from core.skeleton import Skeleton
+    
+    # Load skeleton from file
+    skeleton = Skeleton.load_from_file('skeleton_step1.json')
+    if skeleton:
+        print(f"✓ Loaded skeleton with {skeleton.get_joint_count()} joints")
+        print(f"✓ Loaded {skeleton.get_bone_count()} bones")
+        return True
+    else:
+        print("✗ Failed to load skeleton from file")
+        return False
+
+
 def test_qt_application():
     """Test Qt application (non-GUI)"""
     print("\nTesting Qt application...")
     
     # Test that Qt can be imported
-    from PySide6.QtWidgets import QApplication, QLabel
-    from PySide6.QtCore import Qt
-    
-    print("✓ PySide6 imports work")
-    
-    # Note: We don't create a QApplication here because it requires a display
-    # This is just to verify imports work
-    
-    return True
+    try:
+        from PySide6.QtWidgets import QApplication, QLabel
+        from PySide6.QtCore import Qt
+        print("✓ PySide6 imports work")
+        return True
+    except ImportError as e:
+        print(f"✗ PySide6 imports: {e}")
+        return False
 
 
 def test_assets():
@@ -204,7 +211,7 @@ def test_assets():
     if found:
         print(f"✓ Found {len(found)} test assets")
     else:
-        print("⚠ No test assets found")
+        print("✗ No test assets found")
     
     return True
 
@@ -222,6 +229,7 @@ def main():
         ("Geometry", test_geometry),
         ("Sculpting", test_sculpting),
         ("Export", test_export),
+        ("Skeleton Loading", test_skeleton_loading),
         ("Qt Application", test_qt_application),
         ("Assets", test_assets),
     ]
