@@ -433,6 +433,19 @@ class Vectorizer:
         
         return sorted_contours
     
+    def get_image(self) -> Optional[np.ndarray]:
+        """Получить текущее изображение"""
+        return self.image
+    
+    def get_contours(self) -> List[Contour]:
+        """Получить все контуры"""
+        return self.contours
+    
+    def set_parameter(self, name: str, value: Any) -> None:
+        """Установить параметр векторизации"""
+        # Для совместимости с UI
+        pass
+    
     def get_external_contours(self) -> List[Contour]:
         """Получить только внешние контуры"""
         return [c for c in self.contours if c.is_external]
