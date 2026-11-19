@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QFrame, QGraphicsView, QGraphicsScene, QGraphicsItem,
     QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem, QGraphicsPathItem
 )
-from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QPointF, QTimer
+from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QPointF, QTimer, QLineF
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush, QPainterPath, QTransform
 
 from core.skeleton import Skeleton, Joint, JointRole, BodyContour, create_skeleton_from_json_file
