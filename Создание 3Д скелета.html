@@ -1,0 +1,2079 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMS-0047 · Окно 1 — Свободный конструктор скелета персонажа</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='3.5' r='2.2' fill='%2338bdf8'/%3E%3Cpath d='M8 6v4.5M3 7.5h10M8 10.5l-3 4M8 10.5l3 4' stroke='%2334d399' stroke-width='1.5' fill='none'/%3E%3C/svg%3E">
+<script>
+window.__earlyErrors = [];
+window.__rigBooted = false;
+window.onerror = function (m, s, l, c) {
+  window.__earlyErrors.push({ code: 'ERR-RUNTIME', msg: m + ' @ ' + (s || 'inline') + ':' + l + ':' + c });
+  return false;
+};
+setTimeout(function () {
+  if (!window.__rigBooted) {
+    var msg = 'Three.js не инициализировался за 10 с — проверьте доступ к unpkg.com (2D-конструктор и экспорт JSON работают автономно)';
+    if (window.__log) window.__log('ERR-CDN', msg);
+    else window.__earlyErrors.push({ code: 'ERR-CDN', msg: msg });
+  }
+}, 10000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+:root{
+  --bg:#0a0e13; --panel:#10151c; --panel2:#0d1218; --line:#1e2833; --line2:#26313f;
+  --txt:#d7e0ea; --dim:#7c8b9d; --dim2:#5b6b7d;
+  --acc:#22d3ee; --acc2:#fbbf24; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+  --left:#34d399; --right:#fb923c; --center:#38bdf8; --contour:#f0a63c;
+  --mono:ui-monospace,'Cascadia Mono','JetBrains Mono',Consolas,'Liberation Mono',monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;overflow:hidden}
+::selection{background:rgba(34,211,238,.3)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:#0c1117}
+::-webkit-scrollbar-thumb{background:#243040;border-radius:5px;border:2px solid #0c1117}
+*{scrollbar-width:thin;scrollbar-color:#243040 #0c1117}
+.app-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 16px;
+  border-bottom:1px solid var(--line2);background:linear-gradient(180deg,#121924,#0d1218)}
+.brand small{display:block;font:700 10px var(--mono);letter-spacing:2px;color:var(--acc2);margin-bottom:3px}
+.brand h1{font:600 15px/1.2 var(--sans);letter-spacing:.4px;color:#eef4fa}
+.head-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.legend{display:flex;gap:11px;font:10px var(--mono);color:var(--dim)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.status{font:700 10px var(--mono);letter-spacing:1.2px;padding:7px 11px;border-radius:6px;border:1px solid var(--line2);color:var(--dim)}
+.status.ok{color:var(--ok);border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.08)}
+.status.busy{color:var(--warn);border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.08)}
+.status.err{color:var(--err);border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.1)}
+.btn{font:600 11px/1 var(--mono);letter-spacing:.8px;text-transform:uppercase;color:var(--txt);
+  background:#141b24;border:1px solid var(--line2);border-radius:7px;padding:9px 13px;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s,color .15s}
+.btn:hover{border-color:var(--acc);color:#fff;box-shadow:0 0 12px rgba(34,211,238,.25)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;transform:none}
+.btn-acc{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.55);color:var(--acc)}
+.btn-go{background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.6);color:var(--ok);padding:11px 16px;font-size:12px}
+.btn-go:hover{border-color:var(--ok);color:#b9f4dd;box-shadow:0 0 14px rgba(52,211,153,.3)}
+.btn-sm{padding:5px 9px;font-size:10px;border-radius:5px}
+.btn.active{border-color:var(--acc2);color:var(--acc2);background:rgba(251,191,36,.1)}
+.btn-danger{border-color:rgba(248,113,113,.4);color:var(--err)}
+.btn-danger:hover{border-color:var(--err);color:#ffd7d7;box-shadow:0 0 10px rgba(248,113,113,.25)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.btn-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.btn-row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.btn-wide{width:100%}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+  background:#1e2833;outline:none;margin:10px 0 2px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:4px;
+  background:#e8f6fb;border:2px solid var(--acc);cursor:pointer;box-shadow:0 0 8px rgba(34,211,238,.5)}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:4px;background:#e8f6fb;border:2px solid var(--acc);cursor:pointer}
+input[type=range]::-moz-range-track{background:transparent}
+input[type=text],input[type=number],select{width:100%;background:#0f151d;color:var(--txt);
+  border:1px solid var(--line2);border-radius:6px;padding:7px 9px;font:12px var(--mono);outline:none}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--acc)}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;padding:7px 0;font-size:12px;color:var(--txt);user-select:none}
+.switch input{display:none}
+.switch .tr{width:34px;height:18px;border-radius:10px;background:#1e2833;border:1px solid #2a3644;position:relative;flex:none;transition:.15s}
+.switch .tr::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#7c8b9d;transition:.15s}
+.switch input:checked + .tr{background:rgba(34,211,238,.25);border-color:var(--acc)}
+.switch input:checked + .tr::after{left:18px;background:var(--acc)}
+#main{display:grid;grid-template-columns:312px minmax(0,1fr) minmax(0,1fr);min-height:0}
+#sidebar{background:var(--panel);border-right:1px solid var(--line2);padding:14px 16px;overflow-y:auto;min-height:0}
+.group{margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed #1c2632}
+.group:last-child{border-bottom:none;margin-bottom:0}
+.g-title{font:700 10px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.g-title b{color:var(--acc)} .g-title i{color:var(--acc2);font-style:normal}
+.ctl{margin-bottom:12px}.ctl:last-child{margin-bottom:0}
+.ctl-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.ctl-name{font-size:12px;color:var(--txt)}
+.val{font:700 11px var(--mono);color:var(--acc2);background:rgba(251,191,36,.08);
+  border:1px solid rgba(251,191,36,.25);border-radius:4px;padding:2px 7px;white-space:nowrap}
+.footnote{font:10px/1.6 var(--mono);color:var(--dim2);letter-spacing:.3px}
+.insp-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.insp-label{font:10px var(--mono);color:var(--dim);letter-spacing:1px;margin:6px 0 3px;text-transform:uppercase}
+.insp-meta{font:11px/1.7 var(--mono);color:#9fb6cc;margin-bottom:6px}
+.insp-meta b{color:var(--acc)}
+#contourList{display:flex;flex-direction:column;gap:5px}
+.ct-item{display:flex;align-items:center;gap:7px;border:1px solid var(--line2);border-radius:6px;
+  padding:5px 8px;background:#0f151d;cursor:pointer;font:11px var(--mono)}
+.ct-item.sel{border-color:var(--contour)}
+.ct-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt)}
+.ct-item .ct{color:var(--dim2)}
+.ct-item button{flex:none}
+.pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel2)}
+#pane2d{border-right:1px solid var(--line2)}
+.pane-head{flex:none;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;
+  border-bottom:1px solid var(--line);background:#111823;overflow-x:auto}
+.pane-title{font:700 10px var(--mono);letter-spacing:1.6px;color:var(--dim);white-space:nowrap;flex:none}
+.pane-stats{flex:1;min-width:0;text-align:right;font:700 11px var(--mono);color:var(--acc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.view-bar{display:flex;gap:5px;flex:none}
+.pane-body{flex:1;position:relative;min-height:0;overflow:hidden;user-select:none}
+#wrap2d{background:#0f141b}
+#canvas2d{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#wrap3d{background:#0d1420}
+#wrap3d canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;outline:none}
+.hud{position:absolute;left:12px;bottom:10px;pointer-events:none;z-index:5;
+  font:11px/1.7 var(--mono);color:#9fb6cc;text-shadow:0 1px 3px #000c}
+.hud b{color:var(--acc)}
+.hud-top{position:absolute;left:12px;top:10px;bottom:auto}
+.hint-chip{position:absolute;right:12px;top:10px;pointer-events:none;z-index:5;
+  font:10px var(--mono);color:var(--dim2);text-align:right;line-height:1.7;text-shadow:0 1px 3px #000c}
+#ctxMenu{position:absolute;z-index:20;display:none;min-width:230px;background:#101823;
+  border:1px solid var(--line2);border-radius:8px;box-shadow:0 12px 40px #000c;padding:5px}
+#ctxMenu .ci{display:block;width:100%;text-align:left;font:11px var(--mono);color:var(--txt);
+  background:none;border:none;border-radius:5px;padding:8px 10px;cursor:pointer}
+#ctxMenu .ci:hover{background:rgba(34,211,238,.12);color:#fff}
+#ctxMenu .ci.danger{color:var(--err)}
+#ctxMenu .ci.danger:hover{background:rgba(248,113,113,.12)}
+#ctxMenu .sep{height:1px;background:var(--line);margin:4px 6px}
+.boot-error{position:absolute;inset:0;display:grid;place-items:center;z-index:9;color:var(--err);
+  font:700 12px var(--mono);letter-spacing:1px;text-align:center;padding:24px;line-height:2}
+#console{border-top:1px solid var(--line2);background:#0a0d12;display:flex;flex-direction:column;height:190px}
+#console.collapsed{height:35px}
+#console.collapsed #consoleBody{display:none}
+#consoleHead{height:34px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;
+  border-bottom:1px solid #161e28;background:var(--panel2)}
+.con-title{font:700 10px var(--mono);letter-spacing:1.8px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-count{font:700 10px var(--mono);padding:3px 7px;border-radius:4px;border:1px solid var(--line2);color:var(--dim2);flex:none}
+#errChip.on{color:var(--err);border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)}
+#warnChip.on{color:var(--warn);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
+.con-actions{margin-left:auto;display:flex;gap:6px;flex:none}
+#consoleBody{flex:1;overflow-y:auto;padding:8px 12px;font:12px/1.75 var(--mono)}
+.ln{display:flex;gap:10px;align-items:baseline}
+.lt{color:var(--dim2);flex:none}
+.lc{flex:none;min-width:150px;font-weight:700}
+.lm{color:#b9c6d4;word-break:break-word}
+.l-sys .lc{color:#8aa0b8}
+.l-sketch .lc{color:#c084fc}
+.l-drag .lc{color:#60a5fa}
+.l-sync .lc{color:#2dd4bf}
+.l-edit .lc{color:#f0a63c}
+.l-ok .lc{color:var(--ok)} .l-ok .lm{color:#c9efe0}
+.l-warn .lc{color:var(--warn)} .l-warn .lm{color:#efe3c0}
+.l-err .lc{color:var(--err)} .l-err .lm{color:#f3c7c7}
+@media (max-width:1280px){ #main{grid-template-columns:276px minmax(0,1fr) minmax(0,1fr)} }
+@media (max-width:980px){
+  #main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) minmax(0,1fr)}
+  #sidebar{max-height:34vh;border-right:none;border-bottom:1px solid var(--line2)}
+  #pane2d{border-right:none;border-bottom:1px solid var(--line2)}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <small>GMS-0047 / SKELETON CONSTRUCTOR · ОКНО 1 · v2</small>
+    <h1>Свободная сборка анатомической болванки по референсу</h1>
+  </div>
+  <div class="head-right">
+    <span class="legend">
+      <span><i style="background:var(--center)"></i>ЦЕНТР</span>
+      <span><i style="background:var(--left)"></i>ЛЕВАЯ L (+X)</span>
+      <span><i style="background:var(--right)"></i>ПРАВАЯ R (−X)</span>
+      <span><i style="background:var(--contour)"></i>КОНТУР</span>
+    </span>
+    <span id="status" class="status">ЗАГРУЗКА</span>
+    <button id="bExport" class="btn btn-go">Готово · Сохранить скелет (.JSON)</button>
+  </div>
+</header>
+
+<main id="main">
+  <aside id="sidebar">
+    <div class="group">
+      <div class="g-title"><b>01</b> · Эскиз-калька</div>
+      <div class="btn-row">
+        <button id="bLoadSketch" class="btn btn-acc">Загрузить эскиз</button>
+        <button id="bTestSketch" class="btn">Тестовый эскиз</button>
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Прозрачность эскиза</span><span class="val" id="vSketchOp">55 %</span></div>
+        <input type="range" id="rSketchOp" min="0" max="100" step="1" value="55">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Масштаб эскиза</span><span class="val" id="vSketchScale">1.00×</span></div>
+        <input type="range" id="rSketchScale" min="0.2" max="3" step="0.01" value="1">
+      </div>
+      <button id="bResetSketch" class="btn btn-sm btn-wide">Сбросить положение кальки</button>
+      <div class="footnote" style="margin-top:8px">ПКМ-драг или Space+ЛКМ — пан кальки · колесо — зум кальки. Калька не зависит от скелета.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><b>02</b> · Инструменты сборки</div>
+      <div class="btn-row4">
+        <button class="btn btn-sm tool-btn active" data-tool="select" title="V — выбор / перетаскивание">Выбор</button>
+        <button class="btn btn-sm tool-btn" data-tool="add" title="A — клик ставит узел; от выделенного — кость">+Узел</button>
+        <button class="btn btn-sm tool-btn" data-tool="contour" title="C — обводка силуэта">Контур</button>
+        <button class="btn btn-sm tool-btn" data-tool="erase" title="E — клик удаляет узел/кость">Ластик</button>
+      </div>
+      <div class="btn-row" id="contourModeRow">
+        <button class="btn btn-sm cmode-btn active" data-cmode="pts" title="Полилиния по кликам; Enter/двойной клик — завершить">Точки</button>
+        <button class="btn btn-sm cmode-btn" data-cmode="brush" title="Свободная кисть: зажать и вести">Кисть</button>
+      </div>
+      <label class="switch"><input type="checkbox" id="cCloseContour" checked><span class="tr"></span>Замыкать контур в петлю</label>
+      <label class="switch"><input type="checkbox" id="cMirror" checked><span class="tr"></span>Зеркальная симметрия (L ↔ R)</label>
+      <div class="btn-row3">
+        <button id="bTPose" class="btn btn-sm">T-Pose</button>
+        <button id="bAPose" class="btn btn-sm">A-Pose</button>
+        <button id="bSym" class="btn btn-sm" title="Выровнять правую сторону по левой">Симметр.</button>
+      </div>
+      <div class="btn-row">
+        <button id="bClear" class="btn btn-sm btn-danger">Очистить / с нуля</button>
+        <button id="bFit" class="btn btn-sm" title="F — вписать скелет в кадр">Вписать</button>
+      </div>
+      <div class="footnote">Delete — удалить выделенное (дети к родителю) · Shift+Delete — удалить ветку · ПКМ по узлу/кости — меню · Ctrl+Z / Ctrl+Shift+Z — история.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><b>03</b> · Инспектор выделения</div>
+      <div id="inspBox"><div class="footnote">Ничего не выделено. Кликните узел, кость или контур инструментом «Выбор».</div></div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><b>04</b> · Контуры тела</div>
+      <div id="contourList"><div class="footnote">Контуров нет. Инструмент «Контур» → обведите силуэт поверх эскиза.</div></div>
+      <label class="switch"><input type="checkbox" id="cAutoRadius" checked><span class="tr"></span>Радиус капсул из контура (авто)</label>
+      <label class="switch"><input type="checkbox" id="cShowContour3D" checked><span class="tr"></span>Показывать контуры в 3D</label>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><i>05</i> · Z-глубина и рост (3D)</div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Целевой рост в 3D</span><span class="val" id="vHeight">180 см</span></div>
+        <input type="range" id="rHeight" min="140" max="220" step="1" value="180">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Глубина грудной клетки (Z)</span><span class="val" id="vChestD">26 см</span></div>
+        <input type="range" id="rChestD" min="15" max="45" step="1" value="26">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Глубина таза (Z)</span><span class="val" id="vPelvisD">24 см</span></div>
+        <input type="range" id="rPelvisD" min="15" max="40" step="1" value="24">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Сгиб локтей / коленей по Z</span><span class="val" id="vBend">4 см</span></div>
+        <input type="range" id="rBend" min="0" max="15" step="0.5" value="4">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><i>06</i> · Объём-фолбэк (радиус X, см)</div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Торс</span><span class="val" id="vTorsoR">15 см</span></div>
+        <input type="range" id="rTorsoR" min="8" max="30" step="0.5" value="15">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Руки</span><span class="val" id="vArmsR">6 см</span></div>
+        <input type="range" id="rArmsR" min="3" max="12" step="0.5" value="6">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Ноги</span><span class="val" id="vLegsR">9 см</span></div>
+        <input type="range" id="rLegsR" min="5" max="16" step="0.5" value="9">
+      </div>
+      <div class="footnote">Если у кости нет голосов контура — радиус берётся отсюда. Z-радиус торса — от слайдеров глубины.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><b>07</b> · История и сессия</div>
+      <div class="btn-row">
+        <button id="bUndo" class="btn btn-sm" disabled>↶ Undo</button>
+        <button id="bRedo" class="btn btn-sm" disabled>↷ Redo</button>
+      </div>
+      <button id="bImport" class="btn btn-sm btn-wide">Импорт .JSON (skeleton_step1)</button>
+      <div class="footnote" id="saveNote" style="margin-top:8px">Автосохранение в localStorage: ожидание…</div>
+    </div>
+  </aside>
+
+  <section class="pane" id="pane2d">
+    <div class="pane-head">
+      <span class="pane-title">2D-КОНСТРУКТОР (УЗЛЫ · КОСТИ · КОНТУРЫ)</span>
+      <span class="pane-stats" id="stat2d">—</span>
+    </div>
+    <div class="pane-body" id="wrap2d">
+      <canvas id="canvas2d"></canvas>
+      <div class="hint-chip" id="hintChip">ЛКМ — выбрать / тащить</div>
+      <div class="hud" id="hud2d">инициализация…</div>
+      <div id="ctxMenu"></div>
+    </div>
+  </section>
+
+  <section class="pane" id="pane3d">
+    <div class="pane-head">
+      <span class="pane-title">3D-БОЛВАНКА (THREE.JS)</span>
+      <span class="pane-stats" id="stat3d">—</span>
+      <span class="view-bar">
+        <button class="btn btn-sm view-btn active" data-view="3d">3D</button>
+        <button class="btn btn-sm view-btn" data-view="front">Front</button>
+        <button class="btn btn-sm view-btn" data-view="side">Side</button>
+      </span>
+    </div>
+    <div class="pane-body" id="wrap3d">
+      <div class="hud hud-top" id="hud3d">загрузка Three.js…</div>
+      <div class="hud">LMB — орбита · RMB — панорама · колесо — зум · пол Y=0</div>
+    </div>
+  </section>
+</main>
+
+<footer id="console">
+  <div id="consoleHead">
+    <span class="con-title">КОНСОЛЬ ДИАГНОСТИКИ И КОДОВ ОШИБОК</span>
+    <span id="errChip" class="chip-count">0 ERR</span>
+    <span id="warnChip" class="chip-count">0 WARN</span>
+    <span class="con-actions">
+      <button id="bCopy" class="btn btn-sm">Копировать лог</button>
+      <button id="bClear" class="btn btn-sm">Очистить</button>
+      <button id="bCollapse" class="btn btn-sm">▾</button>
+    </span>
+  </div>
+  <div id="consoleBody"></div>
+</footer>
+
+<input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" hidden>
+<input type="file" id="fileImport" accept="application/json,.json" hidden>
+
+<script type="module">
+'use strict';
+const VERSION = '2.0.0';
+const SAVE_KEY = 'gms0047_step1_v2';
+const TOE_FWD_CM = 10;
+const $ = id => document.getElementById(id);
+
+/* ═══════════ КОНСОЛЬ ═══════════ */
+const consoleBody = $('consoleBody'), consoleEl = $('console');
+const errChip = $('errChip'), warnChip = $('warnChip'), statusEl = $('status');
+const LOGBUF = [];
+let errCount = 0, warnCount = 0;
+function stamp() {
+  const d = new Date();
+  return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+}
+function log(code, msg) {
+  const time = stamp();
+  LOGBUF.push('[' + time + '] [' + code + '] ' + msg);
+  if (LOGBUF.length > 2000) LOGBUF.shift();
+  const cls = code.startsWith('ERR') ? 'l-err' : code.startsWith('WARN') ? 'l-warn'
+    : code.startsWith('OK') ? 'l-ok' : code.startsWith('SKETCH') ? 'l-sketch'
+    : code.startsWith('JOINT-DRAG') ? 'l-drag' : code.startsWith('RIG') ? 'l-sync'
+    : (code.startsWith('JOINT') || code.startsWith('BONE') || code.startsWith('CONTOUR') || code.startsWith('UNDO') || code.startsWith('EDIT')) ? 'l-edit' : 'l-sys';
+  const ln = document.createElement('div'); ln.className = 'ln ' + cls;
+  const t = document.createElement('span'); t.className = 'lt'; t.textContent = time;
+  const c = document.createElement('span'); c.className = 'lc'; c.textContent = '[' + code + ']';
+  const m = document.createElement('span'); m.className = 'lm'; m.textContent = msg;
+  ln.append(t, c, m);
+  consoleBody.appendChild(ln);
+  while (consoleBody.children.length > 800) consoleBody.removeChild(consoleBody.firstChild);
+  consoleBody.scrollTop = consoleBody.scrollHeight;
+  if (code.startsWith('ERR')) { errCount++; errChip.textContent = errCount + ' ERR'; errChip.classList.add('on'); }
+  if (code.startsWith('WARN')) { warnCount++; warnChip.textContent = warnCount + ' WARN'; warnChip.classList.add('on'); }
+}
+window.__log = log;
+function setStatus(s) {
+  statusEl.className = 'status ' + s;
+  statusEl.textContent = s === 'ok' ? 'ГОТОВ' : s === 'busy' ? 'ЗАГРУЗКА' : 'ОШИБКА';
+}
+window.onerror = function (msg, src, line, col) {
+  log('ERR-RUNTIME', msg + ' @ ' + (src || 'inline') + ':' + line + ':' + col);
+  setStatus('err'); return false;
+};
+window.addEventListener('unhandledrejection', ev => {
+  log('ERR-PROMISE', String((ev.reason && ev.reason.message) || ev.reason)); setStatus('err');
+});
+window.addEventListener('error', ev => {
+  const t = ev.target;
+  if (t && t !== window && (t.src || t.href)) log('ERR-RES', 'не удалось загрузить ресурс: ' + (t.src || t.href));
+}, true);
+if (window.__earlyErrors && window.__earlyErrors.length) {
+  window.__earlyErrors.forEach(e => log(e.code || 'ERR-RUNTIME', e.msg || String(e)));
+  window.__earlyErrors = [];
+}
+async function copyLog() {
+  const txt = LOGBUF.join('\n');
+  try { await navigator.clipboard.writeText(txt); log('SYS-INIT', 'лог скопирован (' + LOGBUF.length + ' строк)'); }
+  catch (e) {
+    try {
+      const ta = document.createElement('textarea'); ta.value = txt;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      log('SYS-INIT', 'лог скопирован (fallback, ' + LOGBUF.length + ' строк)');
+    } catch (e2) { log('ERR-LOG', 'копирование: ' + e2.message); }
+  }
+}
+function clearLog() {
+  LOGBUF.length = 0; consoleBody.innerHTML = '';
+  errCount = 0; warnCount = 0;
+  errChip.textContent = '0 ERR'; errChip.classList.remove('on');
+  warnChip.textContent = '0 WARN'; warnChip.classList.remove('on');
+  log('SYS-INIT', 'консоль очищена');
+}
+
+/* ═══════════ РОЛИ И РЕГИОНЫ ═══════════ */
+const ROLES = ['root', 'spine', 'chest', 'neck', 'head', 'headtop', 'arm', 'hand', 'leg', 'foot'];
+const ROLE_LABEL = {
+  root: 'Root / Таз', spine: 'Spine / Талия', chest: 'Chest / Грудь', neck: 'Шея',
+  head: 'Голова', headtop: 'Макушка', arm: 'Рука (плечо/локоть)', hand: 'Кисть',
+  leg: 'Нога (бедро/колено)', foot: 'Стопа (лодыжка/носок)'
+};
+const CENTER_ROLES = new Set(['root', 'spine', 'chest', 'neck', 'head', 'headtop']);
+const CHILD_ROLE_GUESS = {
+  root: 'spine', spine: 'chest', chest: 'neck', neck: 'head', head: 'headtop',
+  headtop: 'headtop', arm: 'arm', hand: 'hand', leg: 'leg', foot: 'foot'
+};
+const REGION_LABEL = {
+  pelvis: 'Таз', belly: 'Живот', chest: 'Грудь', neck: 'Шея', head: 'Голова',
+  shoulder: 'Плечо', arm: 'Рука', hand: 'Кисть', thigh: 'Бедро', shin: 'Голень', foot: 'Стопа'
+};
+function regionOf(childRole, parentRole) {
+  switch (childRole) {
+    case 'spine': return 'pelvis';
+    case 'chest': return 'belly';
+    case 'neck': return 'chest';
+    case 'head': return 'neck';
+    case 'headtop': return 'head';
+    case 'arm': return (parentRole === 'arm' || parentRole === 'hand') ? 'arm' : 'shoulder';
+    case 'hand': return 'hand';
+    case 'leg': return (parentRole === 'leg' || parentRole === 'foot') ? 'shin' : 'thigh';
+    case 'foot': return 'foot';
+    case 'root': return null;
+    default: return 'belly';
+  }
+}
+function sideOf(j) {
+  if (CENTER_ROLES.has(j.role)) return 'center';
+  if (j.x > 0.001) return 'left';
+  if (j.x < -0.001) return 'right';
+  return 'center';
+}
+const SIDE_CSS = { center: '#38bdf8', left: '#34d399', right: '#fb923c' };
+const SIDE_HEX = { center: 0x38bdf8, left: 0x34d399, right: 0xfb923c };
+
+/* ═══════════ СОСТОЯНИЕ РЕДАКТОРА ═══════════ */
+let joints = [];      // {id,name,role,x,y,parent,pair}
+let contours = [];    // {id,name,closed,visible,points:[{x,y}]}
+let nextId = 1;
+let sel = null;       // {type:'joint'|'bone'|'contour', id}
+let tool = 'select', cmode = 'pts';
+let drawing = null;   // {mode, points:[]}
+let hover = null;
+let drag = null;
+let spaceHeld = false;
+let cursorRig = { x: 0, y: 0 };
+let lastR = null;
+let undoStack = [], undoIndex = -1;
+const UNDO_MAX = 60;
+let userFitted = false;
+let quotaWarned = false;
+
+const byId = id => joints.find(j => j.id === id) || null;
+const childrenOf = id => joints.filter(j => j.parent === id);
+function serializeCore() { return JSON.stringify({ joints, contours, nextId }); }
+function restoreCore(str) {
+  const o = JSON.parse(str);
+  joints = o.joints || []; contours = o.contours || []; nextId = o.nextId || 1;
+  sel = null; hover = null; drawing = null;
+}
+function updateUndoButtons() {
+  $('bUndo').disabled = undoIndex <= 0;
+  $('bRedo').disabled = undoIndex >= undoStack.length - 1;
+}
+function pushInitialSnapshot() {
+  undoStack = [serializeCore()]; undoIndex = 0; updateUndoButtons();
+}
+function commit(label) {
+  undoStack = undoStack.slice(0, undoIndex + 1);
+  undoStack.push(serializeCore());
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  undoIndex = undoStack.length - 1;
+  updateUndoButtons();
+  sync3D(label, true);
+  requestDraw(); renderInspector(); renderContours(); updateStat2d();
+  scheduleSave();
+}
+function doUndo() {
+  if (undoIndex <= 0) return;
+  undoIndex--; restoreCore(undoStack[undoIndex]); updateUndoButtons();
+  sync3D('undo', true); requestDraw(); renderInspector(); renderContours(); updateStat2d(); scheduleSave();
+  log('UNDO', 'шаг назад → ' + undoIndex + '/' + (undoStack.length - 1));
+}
+function doRedo() {
+  if (undoIndex >= undoStack.length - 1) return;
+  undoIndex++; restoreCore(undoStack[undoIndex]); updateUndoButtons();
+  sync3D('redo', true); requestDraw(); renderInspector(); renderContours(); updateStat2d(); scheduleSave();
+  log('UNDO', 'шаг вперёд → ' + undoIndex + '/' + (undoStack.length - 1));
+}
+
+/* ═══════════ ПАРАМЕТРЫ ═══════════ */
+const SL = {};
+function paintSlider(el) {
+  const p = (el.value - el.min) / (el.max - el.min) * 100;
+  el.style.background = 'linear-gradient(90deg, var(--acc) ' + p + '%, #1e2833 ' + p + '%)';
+}
+function bindSlider(id, badgeId, fmtFn, reason) {
+  const el = $(id), badge = $(badgeId);
+  const upd = () => { badge.textContent = fmtFn(el.value); paintSlider(el); };
+  el.addEventListener('input', () => { upd(); onParamInput(reason); });
+  el.addEventListener('change', () => { upd(); sync3D(reason, true); scheduleSave(); });
+  upd();
+  SL[id] = { el, set(v) { el.value = v; upd(); } };
+}
+function readParams() {
+  return {
+    height: +$('rHeight').value, chestD: +$('rChestD').value, pelvisD: +$('rPelvisD').value,
+    bend: +$('rBend').value, torsoR: +$('rTorsoR').value, armsR: +$('rArmsR').value, legsR: +$('rLegsR').value,
+    autoRadius: $('cAutoRadius').checked, showContour3D: $('cShowContour3D').checked,
+    mirror: $('cMirror').checked, closeContour: $('cCloseContour').checked
+  };
+}
+function onParamInput(reason) {
+  if (reason === 'прозрачность' || reason === 'масштаб кальки') { requestDraw(); return; }
+  sync3D(reason, false); requestDraw(); scheduleSave();
+}
+
+/* ═══════════ ЧИСТАЯ МАТЕМАТИКА 2D → 3D ═══════════ */
+function median(arr) {
+  if (!arr.length) return 0;
+  const a = arr.slice().sort((x, y) => x - y);
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+function computeRig3D() {
+  const P = readParams();
+  const warnings = [];
+  const byIdMap = {};
+  joints.forEach(j => { byIdMap[j.id] = j; });
+  /* пол: только стопы; фолбэк — листья ног; затем WARN */
+  let floorCand = joints.filter(j => j.role === 'foot');
+  let floorMode = 'foot';
+  if (!floorCand.length) {
+    floorCand = joints.filter(j => j.role === 'leg' && !childrenOf(j.id).length);
+    floorMode = 'leg-leaf';
+    if (floorCand.length) warnings.push('нет узлов роли Foot — пол взят по листьям ног');
+  }
+  if (!floorCand.length) {
+    floorCand = joints.slice();
+    floorMode = 'global';
+    if (joints.length) warnings.push('нет ног — пол взят по глобальному минимуму (ненадёжно)');
+  }
+  let floorY = 0, floorJoint = '—';
+  if (floorCand.length) {
+    let best = floorCand[0];
+    for (const j of floorCand) if (j.y < best.y) best = j;
+    floorY = best.y; floorJoint = best.name;
+  }
+  /* рост: только макушка/голова */
+  let topCand = joints.filter(j => j.role === 'headtop');
+  let topMode = 'headtop';
+  if (!topCand.length) { topCand = joints.filter(j => j.role === 'head'); topMode = 'head'; }
+  if (!topCand.length) {
+    topCand = joints.slice(); topMode = 'global';
+    if (joints.length) warnings.push('нет узлов Head/HeadTop — рост взят по глобальному максимуму');
+  }
+  let topY = floorY, topJoint = '—';
+  if (topCand.length) {
+    let best = topCand[0];
+    for (const j of topCand) if (j.y > best.y) best = j;
+    topY = best.y; topJoint = best.name;
+  }
+  const natural = Math.max(1e-6, topY - floorY);
+  let k = 1;
+  if (natural > 5) k = P.height / natural;
+  else if (joints.length) warnings.push('вырожденный рост (Head≈Foot) — масштаб ×1');
+
+  const world = {}, local = {};
+  for (const j of joints) {
+    const par = j.parent ? byIdMap[j.parent] : null;
+    let zCm = 0;
+    if (j.role === 'arm' && par && par.role === 'arm') zCm = -P.bend;
+    else if (j.role === 'leg' && par && par.role === 'leg') zCm = P.bend;
+    else if (j.role === 'foot' && par && par.role === 'foot') zCm = TOE_FWD_CM;
+    world[j.id] = { x: j.x * k / 100, y: (j.y - floorY) * k / 100, z: zCm / 100 };
+  }
+  for (const j of joints) {
+    const w = world[j.id];
+    if (!j.parent || !byIdMap[j.parent]) local[j.id] = { x: w.x, y: w.y, z: w.z };
+    else {
+      const p = world[j.parent];
+      local[j.id] = { x: w.x - p.x, y: w.y - p.y, z: w.z - p.z };
+    }
+  }
+  /* кости + явные регионы */
+  const bones = [];
+  for (const j of joints) {
+    if (!j.parent || !byIdMap[j.parent]) continue;
+    const par = byIdMap[j.parent];
+    const a = world[j.parent], b = world[j.id];
+    const region = regionOf(j.role, par.role);
+    bones.push({
+      child: j.id, parent: j.parent, region,
+      lengthCm: Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * 100,
+      votes: []
+    });
+  }
+  /* голоса контура: каждая точка → ближайшая кость (перпендикуляр) */
+  if (P.autoRadius) {
+    for (const ct of contours) {
+      if (!ct.visible) continue;
+      for (const p of ct.points) {
+        let bestBone = null, bestD = Infinity;
+        for (const b of bones) {
+          const aj = byIdMap[b.parent], bj = byIdMap[b.child];
+          const ax = aj.x, ay = aj.y, bx = bj.x, by = bj.y;
+          const dx = bx - ax, dy = by - ay;
+          const len2 = dx * dx + dy * dy;
+          if (len2 < 1e-9) continue;
+          let t = ((p.x - ax) * dx + (p.y - ay) * dy) / len2;
+          if (t < 0.05 || t > 0.95) continue;
+          t = Math.max(0, Math.min(1, t));
+          const d = Math.hypot(p.x - (ax + t * dx), p.y - (ay + t * dy));
+          if (d < bestD) { bestD = d; bestBone = b; }
+        }
+        if (bestBone && bestD > 0.4 && bestD < 60) bestBone.votes.push(bestD);
+      }
+    }
+  }
+  const headJ = joints.find(j => j.role === 'head');
+  const headTopJ = joints.find(j => j.role === 'headtop');
+  const headLenU = (headJ && headTopJ) ? Math.hypot(headTopJ.x - headJ.x, headTopJ.y - headJ.y) : 14;
+  let contourBones = 0;
+  for (const b of bones) {
+    let rxCm, source;
+    if (b.votes.length >= 4) { rxCm = median(b.votes) * k; source = 'contour'; contourBones++; }
+    else {
+      source = 'slider';
+      switch (b.region) {
+        case 'head': rxCm = Math.max(6, headLenU * k * 0.45); break;
+        case 'neck': rxCm = 5; break;
+        case 'shoulder': rxCm = P.armsR * 1.15; break;
+        case 'arm': rxCm = P.armsR; break;
+        case 'hand': rxCm = P.armsR * 0.8; break;
+        case 'thigh': rxCm = P.legsR * 1.05; break;
+        case 'shin': rxCm = P.legsR; break;
+        case 'foot': rxCm = P.legsR * 0.55; break;
+        case 'pelvis': rxCm = P.torsoR * 0.95; break;
+        case 'belly': rxCm = P.torsoR * 0.9; break;
+        case 'chest': rxCm = P.torsoR; break;
+        default: rxCm = P.torsoR * 0.8;
+      }
+    }
+    rxCm = Math.max(1.5, Math.min(45, rxCm));
+    let rzCm = rxCm;
+    if (b.region === 'chest') rzCm = P.chestD / 2;
+    else if (b.region === 'pelvis') rzCm = P.pelvisD / 2;
+    else if (b.region === 'belly') rzCm = (P.chestD + P.pelvisD) / 4;
+    b.radiusXCm = rxCm; b.radiusZCm = Math.max(1.5, rzCm); b.radiusSource = source;
+    if (b.lengthCm < 0.5) warnings.push('кость ' + byIdMap[b.parent].name + '→' + byIdMap[b.child].name + ' почти нулевой длины');
+  }
+  if (P.mirror) {
+    let maxAsym = 0;
+    const seen = new Set();
+    for (const j of joints) {
+      if (!j.pair || seen.has(j.id)) continue;
+      const p = byIdMap[j.pair];
+      if (!p) continue;
+      seen.add(j.id); seen.add(p.id);
+      maxAsym = Math.max(maxAsym, Math.abs(j.x + p.x), Math.abs(j.y - p.y));
+    }
+    if (maxAsym > 0.5) warnings.push('асимметрия L/R ' + maxAsym.toFixed(1) + 'u при включённом зеркале — нажмите «Симметр.»');
+  }
+  const roots = joints.filter(j => !j.parent || !byIdMap[j.parent]);
+  if (roots.length > 1) warnings.push('несколько корней (' + roots.length + ') — проверьте связность');
+  return { P, world, local, bones, k, natural, floorY, topY, floorJoint, topJoint, floorMode, topMode, warnings, contourBones };
+}
+
+/* ═══════════ 2D ВИД ═══════════ */
+const wrap2d = $('wrap2d'), canvas2d = $('canvas2d'), ctx2d = canvas2d.getContext('2d');
+const hud2d = $('hud2d'), stat2d = $('stat2d'), hintChip = $('hintChip'), ctxMenu = $('ctxMenu');
+const view = { k: 2, cx: 0, cy: 93.5, w: 100, h: 100 };
+const sketch = { img: null, dataURL: null, iw: 1, ih: 1, ox: 0, oy: 90, scale: 1, name: '—' };
+let drawQueued = false;
+
+function defaultView() {
+  view.k = Math.min(view.w * 0.92 / 190, view.h * 0.92 / 203);
+  view.cx = 0; view.cy = 93.5; userFitted = false;
+}
+function resize2d() {
+  const w = wrap2d.clientWidth, h = wrap2d.clientHeight;
+  if (w < 2 || h < 2) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas2d.width = Math.round(w * dpr); canvas2d.height = Math.round(h * dpr);
+  view.w = w; view.h = h;
+  if (!userFitted) defaultView();
+  requestDraw();
+}
+const VX = x => view.w / 2 + (x - view.cx) * view.k;
+const VY = y => view.h / 2 - (y - view.cy) * view.k;
+const invX = sx => (sx - view.w / 2) / view.k + view.cx;
+const invY = sy => (view.h / 2 - sy) / view.k + view.cy;
+function visibleRect() {
+  return {
+    x0: view.cx - view.w / 2 / view.k, x1: view.cx + view.w / 2 / view.k,
+    y0: view.cy - view.h / 2 / view.k, y1: view.cy + view.h / 2 / view.k
+  };
+}
+function clampRig(x, y) {
+  const r = visibleRect(), m = 8 / view.k;
+  return {
+    x: Math.max(r.x0 + m, Math.min(r.x1 - m, x)),
+    y: Math.max(r.y0 + m, Math.min(r.y1 - m, y))
+  };
+}
+function fitSkeleton() {
+  if (!joints.length) { defaultView(); requestDraw(); log('EDIT', 'вид сброшен к стартовому кадру'); return; }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const j of joints) {
+    x0 = Math.min(x0, j.x); x1 = Math.max(x1, j.x);
+    y0 = Math.min(y0, j.y); y1 = Math.max(y1, j.y);
+  }
+  for (const ct of contours) for (const p of ct.points) {
+    x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+    y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+  }
+  const bw = Math.max(20, x1 - x0 + 24), bh = Math.max(20, y1 - y0 + 24);
+  view.k = Math.max(0.4, Math.min(9, Math.min(view.w * 0.9 / bw, view.h * 0.9 / bh)));
+  view.cx = (x0 + x1) / 2; view.cy = (y0 + y1) / 2;
+  userFitted = true;
+  requestDraw();
+  log('EDIT', 'скелет вписан в кадр: центр (' + view.cx.toFixed(1) + ', ' + view.cy.toFixed(1) + '), ×' + view.k.toFixed(2));
+}
+const sketchUpp = () => 180 / sketch.ih;
+const sketchS = () => sketch.scale * sketchUpp();
+function requestDraw() {
+  if (drawQueued) return;
+  drawQueued = true;
+  requestAnimationFrame(() => { drawQueued = false; draw2d(); });
+}
+function distToSeg(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function draw2d() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = view.w, h = view.h;
+  ctx2d.clearRect(0, 0, w, h);
+  ctx2d.fillStyle = '#0f141b'; ctx2d.fillRect(0, 0, w, h);
+  const vr = visibleRect();
+  ctx2d.strokeStyle = 'rgba(42,58,76,.35)'; ctx2d.lineWidth = 1;
+  const g0x = Math.floor(vr.x0 / 20) * 20, g0y = Math.floor(vr.y0 / 20) * 20;
+  for (let gx = g0x; gx <= vr.x1; gx += 20) { ctx2d.beginPath(); ctx2d.moveTo(VX(gx), 0); ctx2d.lineTo(VX(gx), h); ctx2d.stroke(); }
+  for (let gy = g0y; gy <= vr.y1; gy += 20) { ctx2d.beginPath(); ctx2d.moveTo(0, VY(gy)); ctx2d.lineTo(w, VY(gy)); ctx2d.stroke(); }
+  if (sketch.img) {
+    const s = sketchS() * view.k;
+    ctx2d.save();
+    ctx2d.globalAlpha = (+$('rSketchOp').value) / 100;
+    ctx2d.imageSmoothingEnabled = true; ctx2d.imageSmoothingQuality = 'high';
+    ctx2d.translate(VX(sketch.ox), VY(sketch.oy));
+    ctx2d.scale(s, s);
+    ctx2d.drawImage(sketch.img, -sketch.iw / 2, -sketch.ih / 2);
+    ctx2d.restore();
+  }
+  /* ось и пол */
+  ctx2d.setLineDash([7, 5]);
+  ctx2d.strokeStyle = 'rgba(34,211,238,.4)'; ctx2d.lineWidth = 1.2;
+  ctx2d.beginPath(); ctx2d.moveTo(VX(0), 0); ctx2d.lineTo(VX(0), h); ctx2d.stroke();
+  ctx2d.setLineDash([]);
+  const floorRig = lastR ? lastR.floorY : 0;
+  ctx2d.strokeStyle = 'rgba(148,180,210,.55)'; ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(0, VY(floorRig)); ctx2d.lineTo(w, VY(floorRig)); ctx2d.stroke();
+  ctx2d.font = '10px monospace'; ctx2d.fillStyle = 'rgba(148,180,210,.7)';
+  ctx2d.fillText('пол 3D Y=0 (по ' + (lastR ? lastR.floorJoint : '—') + ')', 8, VY(floorRig) - 5);
+  ctx2d.fillText('X=0', VX(0) + 5, 12);
+  /* контуры */
+  for (const ct of contours) {
+    if (!ct.visible || ct.points.length < 2) continue;
+    const isSel = sel && sel.type === 'contour' && sel.id === ct.id;
+    ctx2d.strokeStyle = isSel ? '#ffffff' : 'rgba(240,166,60,.85)';
+    ctx2d.lineWidth = isSel ? 2.4 : 1.8;
+    ctx2d.beginPath();
+    ctx2d.moveTo(VX(ct.points[0].x), VY(ct.points[0].y));
+    for (let i = 1; i < ct.points.length; i++) ctx2d.lineTo(VX(ct.points[i].x), VY(ct.points[i].y));
+    if (ct.closed) ctx2d.closePath();
+    ctx2d.stroke();
+    if (isSel) {
+      ctx2d.fillStyle = '#f0a63c';
+      for (const p of ct.points) ctx2d.fillRect(VX(p.x) - 2, VY(p.y) - 2, 4, 4);
+    }
+  }
+  /* текущий рисуемый контур */
+  if (drawing && drawing.points.length) {
+    ctx2d.strokeStyle = '#f0a63c'; ctx2d.lineWidth = 2; ctx2d.setLineDash([4, 3]);
+    ctx2d.beginPath();
+    ctx2d.moveTo(VX(drawing.points[0].x), VY(drawing.points[0].y));
+    for (let i = 1; i < drawing.points.length; i++) ctx2d.lineTo(VX(drawing.points[i].x), VY(drawing.points[i].y));
+    if (drawing.mode === 'pts') ctx2d.lineTo(VX(cursorRig.x), VY(cursorRig.y));
+    ctx2d.stroke(); ctx2d.setLineDash([]);
+    ctx2d.fillStyle = '#ffd9a0';
+    for (const p of drawing.points) { ctx2d.beginPath(); ctx2d.arc(VX(p.x), VY(p.y), 3, 0, Math.PI * 2); ctx2d.fill(); }
+  }
+  /* кости */
+  for (const j of joints) {
+    if (!j.parent) continue;
+    const par = byId(j.parent);
+    if (!par) continue;
+    const isSel = sel && sel.type === 'bone' && sel.id === j.id;
+    ctx2d.strokeStyle = isSel ? '#ffffff' : SIDE_CSS[sideOf(j)];
+    ctx2d.lineWidth = isSel ? 4 : 3;
+    ctx2d.globalAlpha = 0.95;
+    ctx2d.beginPath(); ctx2d.moveTo(VX(par.x), VY(par.y)); ctx2d.lineTo(VX(j.x), VY(j.y)); ctx2d.stroke();
+    ctx2d.globalAlpha = 1;
+  }
+  /* узлы */
+  for (const j of joints) {
+    const sx = VX(j.x), sy = VY(j.y);
+    const isSel = sel && sel.type === 'joint' && sel.id === j.id;
+    const isHov = hover && hover.type === 'joint' && hover.id === j.id;
+    const r = (j.role === 'root' ? 8 : 6.5) + (isSel || isHov ? 3 : 0);
+    if (isSel || isHov) {
+      ctx2d.beginPath(); ctx2d.arc(sx, sy, r + 4, 0, Math.PI * 2);
+      ctx2d.strokeStyle = isSel ? '#fbbf24' : '#ffffff'; ctx2d.lineWidth = 1.5; ctx2d.stroke();
+    }
+    ctx2d.beginPath(); ctx2d.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx2d.fillStyle = j.role === 'root' ? '#3b82f6' : SIDE_CSS[sideOf(j)];
+    ctx2d.fill();
+    ctx2d.strokeStyle = '#0a0e13'; ctx2d.lineWidth = 2; ctx2d.stroke();
+  }
+  /* подпись */
+  const labelTarget = (drag && drag.type === 'joint') ? drag : hover;
+  if (labelTarget && labelTarget.type === 'joint') {
+    const j = byId(labelTarget.id);
+    if (j) {
+      const text = j.name + ' · ' + ROLE_LABEL[j.role] + '  (' + j.x.toFixed(1) + ', ' + j.y.toFixed(1) + ') u';
+      ctx2d.font = '700 11px monospace';
+      const tw = ctx2d.measureText(text).width;
+      let lx = VX(j.x) + 16, ly = VY(j.y) - 26;
+      if (lx + tw + 16 > w) lx = VX(j.x) - tw - 30;
+      if (ly < 6) ly = VY(j.y) + 14;
+      ctx2d.fillStyle = 'rgba(13,20,32,.92)';
+      ctx2d.strokeStyle = SIDE_CSS[sideOf(j)]; ctx2d.lineWidth = 1;
+      ctx2d.beginPath();
+      if (ctx2d.roundRect) ctx2d.roundRect(lx, ly, tw + 14, 20, 5); else ctx2d.rect(lx, ly, tw + 14, 20);
+      ctx2d.fill(); ctx2d.stroke();
+      ctx2d.fillStyle = '#e8f2fb'; ctx2d.fillText(text, lx + 7, ly + 14);
+    }
+  }
+  const toolNames = { select: 'ВЫБОР', add: '+УЗЕЛ', contour: 'КОНТУР·' + (cmode === 'pts' ? 'ТОЧКИ' : 'КИСТЬ'), erase: 'ЛАСТИК' };
+  hud2d.innerHTML = 'курсор: <b>' + cursorRig.x.toFixed(1) + ', ' + cursorRig.y.toFixed(1) + '</b> u · инструмент: <b>' +
+    toolNames[tool] + '</b> · калька: <b>' + Math.round(sketch.scale * 100) + '%</b> · зеркало: <b>' + ($('cMirror').checked ? 'ON' : 'OFF') + '</b>';
+}
+function updateStat2d() {
+  const boneCount = joints.filter(j => j.parent && byId(j.parent)).length;
+  stat2d.textContent = joints.length + ' узлов · ' + boneCount + ' костей · ' + contours.length + ' контуров';
+}
+function hitJoint(sx, sy) {
+  let best = null, bd = 13;
+  for (const j of joints) {
+    const d = Math.hypot(VX(j.x) - sx, VY(j.y) - sy);
+    if (d < bd) { bd = d; best = j.id; }
+  }
+  return best;
+}
+function hitBone(sx, sy) {
+  let best = null, bd = 6;
+  for (const j of joints) {
+    if (!j.parent) continue;
+    const p = byId(j.parent); if (!p) continue;
+    const d = distToSeg(sx, sy, VX(p.x), VY(p.y), VX(j.x), VY(j.y));
+    if (d < bd) { bd = d; best = j.id; }
+  }
+  return best;
+}
+function hitContour(sx, sy) {
+  let best = null, bd = 6;
+  for (const ct of contours) {
+    if (!ct.visible) continue;
+    for (let i = 1; i < ct.points.length; i++) {
+      const a = ct.points[i - 1], b = ct.points[i];
+      const d = distToSeg(sx, sy, VX(a.x), VY(a.y), VX(b.x), VY(b.y));
+      if (d < bd) { bd = d; best = ct.id; }
+    }
+    if (ct.closed && ct.points.length > 2) {
+      const a = ct.points[ct.points.length - 1], b = ct.points[0];
+      const d = distToSeg(sx, sy, VX(a.x), VY(a.y), VX(b.x), VY(b.y));
+      if (d < bd) { bd = d; best = ct.id; }
+    }
+  }
+  return best;
+}
+function updateCursor() {
+  let c = 'default';
+  if (drag) c = 'grabbing';
+  else if (spaceHeld) c = 'move';
+  else if (tool === 'add' || tool === 'contour') c = 'crosshair';
+  else if (tool === 'erase') c = 'not-allowed';
+  else if (hover) c = 'grab';
+  canvas2d.style.cursor = c;
+}
+function updateHint() {
+  const hints = {
+    select: 'ЛКМ — выбрать / тащить · ПКМ-драг / Space — калька',
+    add: 'Клик — новый узел (от выделенного — кость) · клик по узлу — выбрать',
+    contour: cmode === 'pts' ? 'Клики — точки · Enter / 2×клик — готово · Esc — отмена · Backspace — точка назад' : 'Зажмите ЛКМ и ведите кисть · отпустите — готово',
+    erase: 'Клик по узлу / кости — удалить (дети к родителю)'
+  };
+  hintChip.textContent = hints[tool];
+}
+
+/* ═══════════ ОПЕРАЦИИ РЕДАКТОРА ═══════════ */
+function isCenterRole(role) { return CENTER_ROLES.has(role); }
+function ensurePair(j) {
+  if (j.pair && byId(j.pair)) return byId(j.pair);
+  if (isCenterRole(j.role) || Math.abs(j.x) < 0.001) return null;
+  const par = j.parent ? byId(j.parent) : null;
+  let mirrorParent = null;
+  if (par) {
+    if (par.pair && byId(par.pair)) mirrorParent = par.pair;
+    else if (isCenterRole(par.role) || Math.abs(par.x) < 0.001) mirrorParent = par.id;
+    else { const pp = ensurePair(par); mirrorParent = pp ? pp.id : par.id; }
+  }
+  const m = {
+    id: 'j' + (nextId++),
+    name: j.name.replace(/_[LR]$/, '') + (j.x > 0 ? '_R' : '_L'),
+    role: j.role, x: -j.x, y: j.y, parent: mirrorParent, pair: j.id
+  };
+  joints.push(m);
+  j.pair = m.id;
+  if (!/_[LR]$/.test(j.name)) j.name += (j.x > 0 ? '_L' : '_R');
+  return m;
+}
+function addJointAt(x, y) {
+  const c = clampRig(x, y);
+  const parentJ = (sel && sel.type === 'joint') ? byId(sel.id) : null;
+  const role = parentJ ? (CHILD_ROLE_GUESS[parentJ.role] || 'spine') : (joints.length ? 'spine' : 'root');
+  const j = {
+    id: 'j' + (nextId++), name: 'J' + (nextId - 1), role,
+    x: c.x, y: c.y, parent: parentJ ? parentJ.id : null, pair: null
+  };
+  if ($('cMirror').checked && isCenterRole(role)) j.x = 0;
+  joints.push(j);
+  let mirrored = null;
+  if ($('cMirror').checked && !isCenterRole(role) && Math.abs(j.x) > 0.001) mirrored = ensurePair(j);
+  sel = { type: 'joint', id: j.id };
+  commit('узел добавлен');
+  log('JOINT-ADD', j.name + ' [' + ROLE_LABEL[role] + '] @ (' + j.x.toFixed(1) + ', ' + j.y.toFixed(1) + ')' +
+    (parentJ ? ' · кость от ' + parentJ.name : ' · корень') + (mirrored ? ' · зеркало ' + mirrored.name : ''));
+}
+function deleteJoint(id, mode) {
+  const j = byId(id); if (!j) return;
+  const removeIds = new Set([id]);
+  if (mode === 'branch') {
+    const stack = [id];
+    while (stack.length) {
+      const cur = stack.pop();
+      for (const ch of childrenOf(cur)) { removeIds.add(ch.id); stack.push(ch.id); }
+    }
+  } else {
+    for (const ch of childrenOf(id)) ch.parent = j.parent;
+  }
+  joints = joints.filter(x => !removeIds.has(x.id));
+  for (const x of joints) if (x.pair && removeIds.has(x.pair)) x.pair = null;
+  if (sel && removeIds.has(sel.id)) sel = null;
+  commit('узел удалён');
+  log('JOINT-DEL', j.name + ' · режим: ' + (mode === 'branch' ? 'вся ветка (' + removeIds.size + ' узлов)' : 'дети переподвязаны к родителю'));
+}
+function deleteBone(childId) {
+  const j = byId(childId); if (!j || !j.parent) return;
+  const par = byId(j.parent);
+  j.parent = null;
+  commit('кость удалена');
+  log('BONE-DEL', (par ? par.name : '?') + '→' + j.name + ' · ' + j.name + ' стал корнем');
+}
+function deleteContour(id) {
+  const ct = contours.find(c => c.id === id); if (!ct) return;
+  contours = contours.filter(c => c.id !== id);
+  if (sel && sel.type === 'contour' && sel.id === id) sel = null;
+  commit('контур удалён');
+  log('CONTOUR', 'удалён ' + ct.name);
+}
+function symmetrize() {
+  const seen = new Set();
+  let created = 0, fixed = 0;
+  for (const j of joints.slice()) {
+    if (isCenterRole(j.role)) {
+      if (Math.abs(j.x) > 0.001) { j.x = 0; fixed++; }
+      continue;
+    }
+    if (Math.abs(j.x) < 0.001) continue;
+    if (j.pair && byId(j.pair)) {
+      if (seen.has(j.id)) continue;
+      const p = byId(j.pair);
+      seen.add(j.id); seen.add(p.id);
+      const L = j.x >= p.x ? j : p;
+      const R = L === j ? p : j;
+      if (Math.abs(R.x + L.x) > 0.001 || Math.abs(R.y - L.y) > 0.001) fixed++;
+      R.x = -L.x; R.y = L.y;
+    } else {
+      const m = ensurePair(j);
+      if (m) { created++; seen.add(j.id); seen.add(m.id); }
+    }
+  }
+  for (const j of joints) { const c = clampRig(j.x, j.y); j.x = c.x; j.y = c.y; }
+  commit('симметризация');
+  log('EDIT', 'симметризация: выровнено пар/узлов=' + fixed + ', создано зеркал=' + created);
+}
+function clearAll() {
+  joints = []; contours = []; sel = null; drawing = null;
+  defaultView();
+  commit('очистка');
+  log('EDIT', 'холст очищен — сборка с нуля (эскиз сохранён)');
+}
+function applyPreset(key) {
+  const T = key === 'T';
+  const table = [
+    ['Pelvis', 'root', 0, 96, null, null],
+    ['Spine', 'spine', 0, 112, 'Pelvis', null],
+    ['Chest', 'chest', 0, 132, 'Spine', null],
+    ['Neck', 'neck', 0, 152, 'Chest', null],
+    ['Head', 'head', 0, 166, 'Neck', null],
+    ['HeadTop', 'headtop', 0, 180, 'Head', null],
+    ['Shoulder_L', 'arm', 20, 146, 'Chest', 'Shoulder_R'],
+    ['Elbow_L', 'arm', T ? 47 : 42, T ? 146 : 124, 'Shoulder_L', 'Elbow_R'],
+    ['Wrist_L', 'hand', T ? 73 : 61, T ? 146 : 105, 'Elbow_L', 'Wrist_R'],
+    ['Shoulder_R', 'arm', -20, 146, 'Chest', 'Shoulder_L'],
+    ['Elbow_R', 'arm', T ? -47 : -42, T ? 146 : 124, 'Shoulder_R', 'Elbow_L'],
+    ['Wrist_R', 'hand', T ? -73 : -61, T ? 146 : 105, 'Elbow_R', 'Wrist_L'],
+    ['Hip_L', 'leg', 10, 92, 'Pelvis', 'Hip_R'],
+    ['Knee_L', 'leg', T ? 11 : 12, 50, 'Hip_L', 'Knee_R'],
+    ['Ankle_L', 'foot', T ? 12 : 13, 7, 'Knee_L', 'Ankle_R'],
+    ['Toe_L', 'foot', T ? 13 : 14, 2, 'Ankle_L', 'Toe_R'],
+    ['Hip_R', 'leg', -10, 92, 'Pelvis', 'Hip_L'],
+    ['Knee_R', 'leg', T ? -11 : -12, 50, 'Hip_R', 'Knee_L'],
+    ['Ankle_R', 'foot', T ? -12 : -13, 7, 'Knee_R', 'Ankle_L'],
+    ['Toe_R', 'foot', T ? -13 : -14, 2, 'Ankle_R', 'Toe_L']
+  ];
+  const ids = {};
+  joints = [];
+  for (const row of table) {
+    const id = 'j' + (nextId++);
+    ids[row[0]] = id;
+    joints.push({ id, name: row[0], role: row[1], x: row[2], y: row[3], parent: null, pair: null });
+  }
+  for (const row of table) {
+    const j = byId(ids[row[0]]);
+    j.parent = row[4] ? ids[row[4]] : null;
+    j.pair = row[5] ? ids[row[5]] : null;
+  }
+  contours = [];
+  sel = null;
+  fitSkeleton();
+  commit('пресет ' + (T ? 'T-Pose' : 'A-Pose'));
+  log('EDIT', 'пресет ' + (T ? 'T-Pose' : 'A-Pose') + ' применён (анатомическая база, 20 узлов)');
+}
+/* RDP для упрощения кисти */
+function rdp(points, eps) {
+  const n = points.length;
+  if (n < 3 || eps <= 0) return points.slice();
+  const keep = new Uint8Array(n); keep[0] = 1; keep[n - 1] = 1;
+  const stack = [[0, n - 1]];
+  while (stack.length) {
+    const seg = stack.pop(), a = seg[0], b = seg[1];
+    if (b - a < 2) continue;
+    const ax = points[a].x, ay = points[a].y;
+    const dx = points[b].x - ax, dy = points[b].y - ay;
+    const l2 = dx * dx + dy * dy;
+    let maxD = -1, idx = -1;
+    for (let i = a + 1; i < b; i++) {
+      const px = points[i].x - ax, py = points[i].y - ay;
+      let d;
+      if (!l2) d = Math.hypot(px, py);
+      else {
+        let t = (px * dx + py * dy) / l2; t = Math.max(0, Math.min(1, t));
+        d = Math.hypot(px - t * dx, py - t * dy);
+      }
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD > eps && idx > 0) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(points[i]);
+  return out;
+}
+function finishDrawing() {
+  if (!drawing) return;
+  let pts = drawing.points.slice();
+  if (drawing.mode === 'brush') pts = rdp(pts, 0.8);
+  /* дедуп подряд идущих */
+  const dd = [];
+  for (const p of pts) {
+    const q = dd[dd.length - 1];
+    if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 0.3) dd.push(p);
+  }
+  const closed = $('cCloseContour').checked && dd.length >= 3;
+  drawing = null;
+  if (dd.length < 2) { requestDraw(); return; }
+  const ct = { id: 'c' + (nextId++), name: 'Контур ' + contours.length + 1, closed, visible: true, points: dd };
+  contours.push(ct);
+  sel = { type: 'contour', id: ct.id };
+  commit('контур обведён');
+  log('CONTOUR', ct.name + ': ' + dd.length + ' точек, ' + (closed ? 'замкнут' : 'открыт') + ' · радиусы капсул пересчитаны');
+}
+function cancelDrawing() {
+  if (!drawing) return;
+  drawing = null; requestDraw();
+  log('CONTOUR', 'обводка отменена');
+}
+
+/* ═══════════ ВВОД 2D ═══════════ */
+function bind2dInput() {
+  canvas2d.addEventListener('contextmenu', e => e.preventDefault());
+  canvas2d.addEventListener('pointerdown', e => {
+    hideCtxMenu();
+    const sx = e.offsetX, sy = e.offsetY;
+    if (e.button === 2 || (e.button === 0 && spaceHeld)) {
+      drag = { type: 'sketch', lx: e.clientX, ly: e.clientY, moved: false, sx, sy };
+      canvas2d.setPointerCapture(e.pointerId);
+      updateCursor(); e.preventDefault();
+      return;
+    }
+    if (e.button !== 0) return;
+    if (tool === 'select') {
+      const hj = hitJoint(sx, sy);
+      if (hj) {
+        sel = { type: 'joint', id: hj };
+        drag = { type: 'joint', id: hj };
+        canvas2d.setPointerCapture(e.pointerId);
+        renderInspector(); requestDraw(); updateCursor();
+        return;
+      }
+      const hb = hitBone(sx, sy);
+      if (hb) { sel = { type: 'bone', id: hb }; renderInspector(); requestDraw(); return; }
+      const hc = hitContour(sx, sy);
+      if (hc) { sel = { type: 'contour', id: hc }; renderInspector(); renderContours(); requestDraw(); return; }
+      sel = null; renderInspector(); renderContours(); requestDraw();
+      return;
+    }
+    if (tool === 'add') {
+      const hj = hitJoint(sx, sy);
+      if (hj) { sel = { type: 'joint', id: hj }; renderInspector(); requestDraw(); return; }
+      addJointAt(invX(sx), invY(sy));
+      return;
+    }
+    if (tool === 'erase') {
+      const hj = hitJoint(sx, sy);
+      if (hj) { deleteJoint(hj, 'reparent'); return; }
+      const hb = hitBone(sx, sy);
+      if (hb) { deleteBone(hb); return; }
+      return;
+    }
+    if (tool === 'contour') {
+      const p = clampRig(invX(sx), invY(sy));
+      if (cmode === 'brush') {
+        drawing = { mode: 'brush', points: [p] };
+        canvas2d.setPointerCapture(e.pointerId);
+      } else {
+        if (!drawing) drawing = { mode: 'pts', points: [] };
+        drawing.points.push(p);
+      }
+      requestDraw();
+    }
+  });
+  canvas2d.addEventListener('pointermove', e => {
+    const sx = e.offsetX, sy = e.offsetY;
+    cursorRig = { x: invX(sx), y: invY(sy) };
+    if (drag && drag.type === 'sketch') {
+      const dx = e.clientX - drag.lx, dy = e.clientY - drag.ly;
+      if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+      sketch.ox += dx / view.k; sketch.oy -= dy / view.k;
+      drag.lx = e.clientX; drag.ly = e.clientY;
+      requestDraw(); return;
+    }
+    if (drag && drag.type === 'joint') {
+      const j = byId(drag.id); if (!j) { drag = null; return; }
+      const c = clampRig(invX(sx), invY(sy));
+      j.x = c.x; j.y = c.y;
+      if ($('cMirror').checked) {
+        if (isCenterRole(j.role)) j.x = 0;
+        else if (Math.abs(j.x) > 0.001) {
+          const p = ensurePair(j);
+          if (p) { p.x = -j.x; p.y = j.y; }
+        }
+      }
+      sync3D('drag', false);
+      refreshInspectorNumbers();
+      requestDraw(); return;
+    }
+    if (drawing && drawing.mode === 'brush') {
+      const p = clampRig(invX(sx), invY(sy));
+      const last = drawing.points[drawing.points.length - 1];
+      if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 0.7) drawing.points.push(p);
+      requestDraw(); return;
+    }
+    if (tool === 'select' || tool === 'erase' || tool === 'add') {
+      const hj = hitJoint(sx, sy);
+      const nh = hj ? { type: 'joint', id: hj } : null;
+      const changed = (nh && (!hover || hover.id !== nh.id)) || (!nh && hover);
+      hover = nh;
+      if (changed) updateCursor();
+    }
+    requestDraw();
+  });
+  const endPointer = e => {
+    if (drag && drag.type === 'joint') {
+      const j = byId(drag.id);
+      if (j) {
+        log('JOINT-DRAG', j.name + ' → (' + j.x.toFixed(1) + ', ' + j.y.toFixed(1) + ') u' +
+          (j.pair ? ' · зеркало синхронно' : ''));
+        commit('перетаскивание');
+      }
+    }
+    if (drag && drag.type === 'sketch') {
+      if (!drag.moved && e.button === 2) {
+        const hj = hitJoint(drag.sx, drag.sy);
+        const hb = hj ? null : hitBone(drag.sx, drag.sy);
+        if (hj) showCtxMenuJoint(hj, drag.sx, drag.sy);
+        else if (hb) showCtxMenuBone(hb, drag.sx, drag.sy);
+      } else if (drag.moved) {
+        log('SKETCH-LOAD', 'калька сдвинута → (' + sketch.ox.toFixed(1) + ', ' + sketch.oy.toFixed(1) + ') u');
+        scheduleSave();
+      }
+    }
+    if (drawing && drawing.mode === 'brush') finishDrawing();
+    drag = null;
+    updateCursor(); requestDraw();
+  };
+  canvas2d.addEventListener('pointerup', endPointer);
+  canvas2d.addEventListener('pointercancel', endPointer);
+  canvas2d.addEventListener('dblclick', e => {
+    if (tool === 'contour' && cmode === 'pts' && drawing) { finishDrawing(); e.preventDefault(); }
+  });
+  canvas2d.addEventListener('pointerleave', () => {
+    if (!drag) { hover = null; requestDraw(); updateCursor(); }
+  });
+  canvas2d.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (!sketch.img) return;
+    const f = e.deltaY > 0 ? 1 / 1.12 : 1.12;
+    const rx = invX(e.offsetX), ry = invY(e.offsetY);
+    const s = sketchS();
+    const ix = (rx - sketch.ox) / s, iy = (sketch.oy - ry) / s;
+    const ns = Math.max(0.2, Math.min(3, sketch.scale * f));
+    const s2 = ns * sketchUpp();
+    sketch.ox = rx - ix * s2; sketch.oy = ry + iy * s2;
+    sketch.scale = ns;
+    SL.rSketchScale.set(ns.toFixed(2));
+    requestDraw(); scheduleSave();
+  }, { passive: false });
+  window.addEventListener('keydown', e => {
+    const t = document.activeElement;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+    if (e.code === 'Space' && !e.repeat && !typing) { spaceHeld = true; updateCursor(); e.preventDefault(); return; }
+    if (typing) {
+      if (e.key === 'Escape') t.blur();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) doRedo(); else doUndo();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); return; }
+    if (e.key === 'Escape') { hideCtxMenu(); cancelDrawing(); return; }
+    if (e.key === 'Enter' && drawing && drawing.mode === 'pts') { finishDrawing(); return; }
+    if ((e.key === 'Backspace' || e.key === 'Delete') && drawing && drawing.mode === 'pts') {
+      drawing.points.pop(); requestDraw(); e.preventDefault(); return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (!sel) return;
+      e.preventDefault();
+      if (sel.type === 'joint') deleteJoint(sel.id, e.shiftKey ? 'branch' : 'reparent');
+      else if (sel.type === 'bone') deleteBone(sel.id);
+      else if (sel.type === 'contour') deleteContour(sel.id);
+      return;
+    }
+    const k = e.key.toLowerCase();
+    if (k === 'v') setTool('select');
+    else if (k === 'a') setTool('add');
+    else if (k === 'c') setTool('contour');
+    else if (k === 'e') setTool('erase');
+    else if (k === 'f') fitSkeleton();
+  });
+  window.addEventListener('keyup', e => { if (e.code === 'Space') { spaceHeld = false; updateCursor(); } });
+  window.addEventListener('blur', () => { spaceHeld = false; updateCursor(); });
+  document.addEventListener('pointerdown', e => {
+    if (!ctxMenu.contains(e.target)) hideCtxMenu();
+  });
+  new ResizeObserver(resize2d).observe(wrap2d);
+}
+function setTool(t) {
+  tool = t;
+  if (t !== 'contour') cancelDrawing();
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+  updateHint(); updateCursor(); requestDraw();
+}
+
+/* ═══════════ КОНТЕКСТНОЕ МЕНЮ ═══════════ */
+function showCtxMenu(items, sx, sy) {
+  ctxMenu.innerHTML = '';
+  for (const it of items) {
+    if (it.sep) { const s = document.createElement('div'); s.className = 'sep'; ctxMenu.appendChild(s); continue; }
+    const b = document.createElement('button');
+    b.className = 'ci' + (it.danger ? ' danger' : '');
+    b.textContent = it.label;
+    b.addEventListener('click', () => { hideCtxMenu(); it.fn(); });
+    ctxMenu.appendChild(b);
+  }
+  ctxMenu.style.display = 'block';
+  const mw = ctxMenu.offsetWidth, mh = ctxMenu.offsetHeight;
+  ctxMenu.style.left = Math.min(sx, view.w - mw - 8) + 'px';
+  ctxMenu.style.top = Math.min(sy, view.h - mh - 8) + 'px';
+}
+function hideCtxMenu() { ctxMenu.style.display = 'none'; }
+function showCtxMenuJoint(id, sx, sy) {
+  const j = byId(id); if (!j) return;
+  sel = { type: 'joint', id }; renderInspector(); requestDraw();
+  showCtxMenu([
+    { label: 'Удалить узел (дети → родителю)', danger: true, fn: () => deleteJoint(id, 'reparent') },
+    { label: 'Удалить узел + всю ветку', danger: true, fn: () => deleteJoint(id, 'branch') },
+    { sep: true },
+    { label: 'Сделать корнем (отвязать)', fn: () => { j.parent = null; commit('отвязка узла'); log('EDIT', j.name + ' стал корнем'); } },
+    { label: 'Переименовать / роль…', fn: () => { const el = $('inspName'); if (el) { el.focus(); el.select(); } } }
+  ], sx, sy);
+}
+function showCtxMenuBone(childId, sx, sy) {
+  const j = byId(childId); if (!j) return;
+  sel = { type: 'bone', id: childId }; renderInspector(); requestDraw();
+  showCtxMenu([
+    { label: 'Удалить кость (ребёнок → корень)', danger: true, fn: () => deleteBone(childId) }
+  ], sx, sy);
+}
+
+/* ═══════════ ИНСПЕКТОР И СПИСОК КОНТУРОВ ═══════════ */
+const inspBox = $('inspBox');
+function renderInspector() {
+  if (!sel) {
+    inspBox.innerHTML = '<div class="footnote">Ничего не выделено. Кликните узел, кость или контур инструментом «Выбор».</div>';
+    return;
+  }
+  if (sel.type === 'joint') {
+    const j = byId(sel.id);
+    if (!j) { sel = null; renderInspector(); return; }
+    const pair = j.pair ? byId(j.pair) : null;
+    const par = j.parent ? byId(j.parent) : null;
+    inspBox.innerHTML =
+      '<div class="insp-label">Имя узла</div><input type="text" id="inspName" value="' + escAttr(j.name) + '">' +
+      '<div class="insp-label">Роль / тип</div><select id="inspRole">' +
+      ROLES.map(r => '<option value="' + r + '"' + (r === j.role ? ' selected' : '') + '>' + ROLE_LABEL[r] + '</option>').join('') +
+      '</select>' +
+      '<div class="insp-row" style="margin-top:6px"><div><div class="insp-label">X (u)</div><input type="number" id="inspX" step="0.5" value="' + j.x.toFixed(1) + '"></div>' +
+      '<div><div class="insp-label">Y (u)</div><input type="number" id="inspY" step="0.5" value="' + j.y.toFixed(1) + '"></div></div>' +
+      '<div class="insp-meta">родитель: <b>' + (par ? escHtml(par.name) : '— (корень)') + '</b><br>зеркало: <b>' + (pair ? escHtml(pair.name) : '—') + '</b> · сторона: <b>' + sideOf(j) + '</b></div>' +
+      '<div class="btn-row"><button class="btn btn-sm btn-danger" id="inspDelR">Удалить (дети↑)</button>' +
+      '<button class="btn btn-sm btn-danger" id="inspDelB">Удалить ветку</button></div>';
+    $('inspName').addEventListener('change', e => {
+      j.name = e.target.value.trim() || j.name; commit('переименование'); log('EDIT', 'узел переименован → ' + j.name);
+    });
+    $('inspRole').addEventListener('change', e => {
+      j.role = e.target.value; commit('роль узла'); log('EDIT', j.name + ' → роль ' + ROLE_LABEL[j.role]);
+    });
+    const numHandler = () => {
+      const c = clampRig(+$('inspX').value || 0, +$('inspY').value || 0);
+      j.x = c.x; j.y = c.y;
+      if ($('cMirror').checked && isCenterRole(j.role)) j.x = 0;
+      const p = j.pair ? byId(j.pair) : null;
+      if (p && $('cMirror').checked) { p.x = -j.x; p.y = j.y; }
+      commit('координаты узла');
+    };
+    $('inspX').addEventListener('change', numHandler);
+    $('inspY').addEventListener('change', numHandler);
+    $('inspDelR').addEventListener('click', () => deleteJoint(j.id, 'reparent'));
+    $('inspDelB').addEventListener('click', () => deleteJoint(j.id, 'branch'));
+    return;
+  }
+  if (sel.type === 'bone') {
+    const j = byId(sel.id);
+    if (!j || !j.parent) { sel = null; renderInspector(); return; }
+    const par = byId(j.parent);
+    const b = lastR ? lastR.bones.find(x => x.child === j.id) : null;
+    inspBox.innerHTML =
+      '<div class="insp-meta">кость: <b>' + escHtml(par ? par.name : '?') + ' → ' + escHtml(j.name) + '</b><br>' +
+      'регион: <b>' + (b && b.region ? REGION_LABEL[b.region] : '—') + '</b><br>' +
+      'длина: <b>' + (b ? b.lengthCm.toFixed(1) : '—') + ' см</b><br>' +
+      'радиус X/Z: <b>' + (b ? b.radiusXCm.toFixed(1) + ' / ' + b.radiusZCm.toFixed(1) : '—') + ' см</b><br>' +
+      'источник радиуса: <b>' + (b ? (b.radiusSource === 'contour' ? 'контур (' + b.votes.length + ' точек)' : 'слайдер-фолбэк') : '—') + '</b></div>' +
+      '<button class="btn btn-sm btn-danger btn-wide" id="inspDelBone">Удалить кость (ребёнок → корень)</button>';
+    $('inspDelBone').addEventListener('click', () => deleteBone(j.id));
+    return;
+  }
+  if (sel.type === 'contour') {
+    const ct = contours.find(c => c.id === sel.id);
+    if (!ct) { sel = null; renderInspector(); return; }
+    inspBox.innerHTML =
+      '<div class="insp-label">Имя контура</div><input type="text" id="inspCName" value="' + escAttr(ct.name) + '">' +
+      '<div class="insp-meta" style="margin-top:6px">точек: <b>' + ct.points.length + '</b> · ' + (ct.closed ? 'замкнут' : 'открыт') + '</div>' +
+      '<label class="switch"><input type="checkbox" id="inspCClosed"' + (ct.closed ? ' checked' : '') + '><span class="tr"></span>Замкнутая петля</label>' +
+      '<label class="switch"><input type="checkbox" id="inspCVis"' + (ct.visible ? ' checked' : '') + '><span class="tr"></span>Виден (и влияет на радиусы)</label>' +
+      '<button class="btn btn-sm btn-danger btn-wide" id="inspDelC">Удалить контур</button>';
+    $('inspCName').addEventListener('change', e => { ct.name = e.target.value.trim() || ct.name; commit('имя контура'); renderContours(); });
+    $('inspCClosed').addEventListener('change', e => { ct.closed = e.target.checked; commit('замыкание контура'); });
+    $('inspCVis').addEventListener('change', e => { ct.visible = e.target.checked; commit('видимость контура'); renderContours(); });
+    $('inspDelC').addEventListener('click', () => deleteContour(ct.id));
+  }
+}
+function refreshInspectorNumbers() {
+  if (sel && sel.type === 'joint') {
+    const j = byId(sel.id);
+    const ex = $('inspX'), ey = $('inspY');
+    if (j && ex && ey && document.activeElement !== ex && document.activeElement !== ey) {
+      ex.value = j.x.toFixed(1); ey.value = j.y.toFixed(1);
+    }
+  }
+}
+function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
+const contourList = $('contourList');
+function renderContours() {
+  if (!contours.length) {
+    contourList.innerHTML = '<div class="footnote">Контуров нет. Инструмент «Контур» → обведите силуэт поверх эскиза.</div>';
+    return;
+  }
+  contourList.innerHTML = '';
+  for (const ct of contours) {
+    const row = document.createElement('div');
+    row.className = 'ct-item' + (sel && sel.type === 'contour' && sel.id === ct.id ? ' sel' : '');
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = ct.name;
+    const cnt = document.createElement('span'); cnt.className = 'ct'; cnt.textContent = ct.points.length + 'т';
+    const eye = document.createElement('button'); eye.className = 'btn btn-sm'; eye.textContent = ct.visible ? '👁' : '—';
+    eye.title = 'Видимость';
+    const del = document.createElement('button'); del.className = 'btn btn-sm btn-danger'; del.textContent = '×';
+    eye.addEventListener('click', ev => { ev.stopPropagation(); ct.visible = !ct.visible; commit('видимость контура'); });
+    del.addEventListener('click', ev => { ev.stopPropagation(); deleteContour(ct.id); });
+    row.addEventListener('click', () => { sel = { type: 'contour', id: ct.id }; renderInspector(); renderContours(); requestDraw(); });
+    row.append(nm, cnt, eye, del);
+    contourList.appendChild(row);
+  }
+}
+
+/* ═══════════ ЭСКИЗ ═══════════ */
+function setSketch(img, name, dataURL) {
+  sketch.img = img;
+  sketch.iw = img.width || img.naturalWidth;
+  sketch.ih = img.height || img.naturalHeight;
+  sketch.ox = 0; sketch.oy = 90; sketch.scale = 1;
+  sketch.name = name;
+  sketch.dataURL = dataURL || null;
+  SL.rSketchScale.set('1');
+  requestDraw(); scheduleSave();
+  log('SKETCH-LOAD', name + ': ' + sketch.iw + '×' + sketch.ih + 'px → калька 180u по высоте');
+}
+function loadSketchFile(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    let durl = null;
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+      cv.getContext('2d').drawImage(img, 0, 0);
+      durl = cv.toDataURL('image/png');
+    } catch (e) { durl = null; }
+    setSketch(img, file.name, durl);
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); log('ERR-SKETCH', 'декодирование: ' + file.name); };
+  img.src = url;
+}
+function makeTestSketch() {
+  const iw = 560, ih = 800, ppu = ih / 180;
+  const cv = document.createElement('canvas'); cv.width = iw; cv.height = ih;
+  const c = cv.getContext('2d');
+  const X = x => iw / 2 + x * ppu, Y = y => ih - y * ppu;
+  const INK = 'rgba(215,228,244,.92)', FAINT = 'rgba(120,160,210,.18)', ACC = 'rgba(240,166,60,.9)';
+  const line = (x1, y1, x2, y2) => { c.beginPath(); c.moveTo(X(x1), Y(y1)); c.lineTo(X(x2), Y(y2)); c.stroke(); };
+  const limb = (pts, wu, col, alpha) => {
+    c.save(); c.globalAlpha = alpha == null ? 1 : alpha;
+    c.strokeStyle = col || INK; c.lineWidth = wu * ppu; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(X(pts[0][0]), Y(pts[0][1]));
+    for (let i = 1; i < pts.length; i++) c.lineTo(X(pts[i][0]), Y(pts[i][1]));
+    c.stroke(); c.restore();
+  };
+  c.strokeStyle = 'rgba(150,190,235,.22)'; c.lineWidth = 1; c.setLineDash([5, 5]);
+  line(0, 0, 0, 180);
+  [180, 166, 152, 132, 112, 96, 50, 7].forEach(y => line(-58, y, 58, y));
+  c.setLineDash([]);
+  c.font = '10px monospace'; c.fillStyle = 'rgba(160,200,240,.55)';
+  for (let cm = 0; cm <= 180; cm += 20) {
+    const y = Y(cm);
+    c.fillRect(2, y, cm % 60 === 0 ? 13 : 7, 1);
+    if (cm % 60 === 0) c.fillText(String(cm), 18, y + 3);
+  }
+  /* анатомический боец в костюме, БЕЗ плаща */
+  limb([[10, 92], [12, 50], [13, 7]], 11);
+  limb([[-10, 92], [-12, 50], [-13, 7]], 11);
+  limb([[13, 7], [15, 2]], 7);
+  limb([[-13, 7], [-15, 2]], 7);
+  c.beginPath();
+  c.moveTo(X(-20), Y(146)); c.lineTo(X(20), Y(146));
+  c.lineTo(X(12), Y(110)); c.lineTo(X(11), Y(94));
+  c.lineTo(X(-11), Y(94)); c.lineTo(X(-12), Y(110));
+  c.closePath();
+  c.fillStyle = FAINT; c.fill();
+  c.strokeStyle = INK; c.lineWidth = 2.5; c.stroke();
+  c.strokeStyle = ACC; c.lineWidth = 2;
+  c.strokeRect(X(-13), Y(142), 26 * ppu, 26 * ppu);
+  c.lineWidth = 3.5; line(-12, 100, 12, 100);
+  limb([[20, 146], [42, 124], [61, 105]], 8);
+  limb([[-20, 146], [-42, 124], [-61, 105]], 8);
+  c.fillStyle = FAINT; c.strokeStyle = INK; c.lineWidth = 2;
+  c.beginPath(); c.arc(X(64), Y(102), 4 * ppu, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.arc(X(-64), Y(102), 4 * ppu, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(X(21), Y(147), 8 * ppu, 5 * ppu, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(X(-21), Y(147), 8 * ppu, 5 * ppu, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  limb([[0, 152], [0, 158]], 6);
+  c.beginPath(); c.arc(X(0), Y(167), 13 * ppu, 0, Math.PI * 2);
+  c.fillStyle = FAINT; c.fill();
+  c.strokeStyle = INK; c.lineWidth = 2.5; c.stroke();
+  c.fillStyle = ACC; c.fillRect(X(-8), Y(168), 16 * ppu, 5 * ppu);
+  c.strokeStyle = ACC; c.lineWidth = 2;
+  c.beginPath(); c.arc(X(0), Y(167), 13.8 * ppu, Math.PI * 1.15, Math.PI * 1.85); c.stroke();
+  c.fillStyle = ACC;
+  c.beginPath(); c.arc(X(12), Y(50), 3 * ppu, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(X(-12), Y(50), 3 * ppu, 0, Math.PI * 2); c.fill();
+  c.font = '700 12px monospace'; c.fillStyle = 'rgba(215,228,244,.8)';
+  c.fillText('GMS TEST SKETCH · ANATOMY BASE · FRONT', 12, 18);
+  c.font = '10px monospace'; c.fillStyle = 'rgba(160,200,240,.6)';
+  c.fillText('H=180u · A-POSE · без одежды/плаща', 12, 32);
+  return cv;
+}
+
+/* ═══════════ АВТОСОХРАНЕНИЕ / ИМПОРТ ═══════════ */
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSession, 800);
+}
+function saveSession() {
+  try {
+    const payload = {
+      v: 2, core: { joints, contours, nextId },
+      params: readParams(),
+      sketch: { dataURL: sketch.dataURL, name: sketch.name, ox: sketch.ox, oy: sketch.oy, scale: sketch.scale, op: +$('rSketchOp').value },
+      view: { k: view.k, cx: view.cx, cy: view.cy, fitted: userFitted }
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    $('saveNote').textContent = 'Автосохранение: ' + stamp() + ' · ' + joints.length + ' узлов, ' + contours.length + ' контуров';
+  } catch (e) {
+    if (!quotaWarned) {
+      quotaWarned = true;
+      log('WARN-SAVE', 'localStorage недоступен/переполнен — автосохранение отключено (' + e.message + ')');
+    }
+    $('saveNote').textContent = 'Автосохранение недоступно (quota/private mode)';
+  }
+}
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const o = JSON.parse(raw);
+    if (!o || o.v !== 2 || !o.core || !Array.isArray(o.core.joints)) return false;
+    joints = o.core.joints; contours = o.core.contours || []; nextId = o.core.nextId || 1;
+    const P = o.params || {};
+    if (P.height != null) SL.rHeight.set(P.height);
+    if (P.chestD != null) SL.rChestD.set(P.chestD);
+    if (P.pelvisD != null) SL.rPelvisD.set(P.pelvisD);
+    if (P.bend != null) SL.rBend.set(P.bend);
+    if (P.torsoR != null) SL.rTorsoR.set(P.torsoR);
+    if (P.armsR != null) SL.rArmsR.set(P.armsR);
+    if (P.legsR != null) SL.rLegsR.set(P.legsR);
+    if (P.autoRadius != null) $('cAutoRadius').checked = P.autoRadius;
+    if (P.showContour3D != null) $('cShowContour3D').checked = P.showContour3D;
+    if (P.mirror != null) $('cMirror').checked = P.mirror;
+    if (P.closeContour != null) $('cCloseContour').checked = P.closeContour;
+    if (P.sketchOp != null) SL.rSketchOp.set(P.sketchOp);
+    if (o.sketch && o.sketch.dataURL) {
+      const img = new Image();
+      img.onload = () => {
+        sketch.img = img; sketch.iw = img.width; sketch.ih = img.height;
+        sketch.dataURL = o.sketch.dataURL; sketch.name = o.sketch.name || 'восстановленный эскиз';
+        sketch.ox = o.sketch.ox || 0; sketch.oy = o.sketch.oy != null ? o.sketch.oy : 90;
+        sketch.scale = o.sketch.scale || 1;
+        SL.rSketchScale.set(sketch.scale.toFixed(2));
+        if (o.sketch.op != null) SL.rSketchOp.set(o.sketch.op);
+        requestDraw();
+      };
+      img.src = o.sketch.dataURL;
+    }
+    if (o.view) {
+      view.k = o.view.k || view.k; view.cx = o.view.cx || 0; view.cy = o.view.cy != null ? o.view.cy : 93.5;
+      userFitted = !!o.view.fitted;
+    }
+    log('SYS-INIT', 'сессия восстановлена из localStorage: ' + joints.length + ' узлов, ' + contours.length + ' контуров');
+    return true;
+  } catch (e) {
+    log('WARN-SAVE', 'чтение сессии: ' + e.message);
+    return false;
+  }
+}
+function importJSON(file) {
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const o = JSON.parse(String(rd.result));
+      if (!o || o.format !== 'GMS-SkeletonStep1' || !o.editor || !Array.isArray(o.editor.joints))
+        throw new Error('неизвестный формат (ожидается GMS-SkeletonStep1 schemaVersion 2)');
+      joints = o.editor.joints;
+      contours = o.editor.contours || [];
+      nextId = o.editor.nextId || (joints.length + contours.length + 1);
+      if (o.parameters) {
+        const P = o.parameters;
+        if (P.targetHeightCm != null) SL.rHeight.set(P.targetHeightCm);
+        if (P.chestDepthCm != null) SL.rChestD.set(P.chestDepthCm);
+        if (P.pelvisDepthCm != null) SL.rPelvisD.set(P.pelvisDepthCm);
+        if (P.limbBendCm != null) SL.rBend.set(P.limbBendCm);
+        if (P.capsuleRadiiCm) {
+          if (P.capsuleRadiiCm.torso != null) SL.rTorsoR.set(P.capsuleRadiiCm.torso);
+          if (P.capsuleRadiiCm.arms != null) SL.rArmsR.set(P.capsuleRadiiCm.arms);
+          if (P.capsuleRadiiCm.legs != null) SL.rLegsR.set(P.capsuleRadiiCm.legs);
+        }
+        if (P.autoRadius != null) $('cAutoRadius').checked = P.autoRadius;
+        if (P.mirrorSymmetry != null) $('cMirror').checked = P.mirrorSymmetry;
+      }
+      sel = null;
+      fitSkeleton();
+      commit('импорт JSON');
+      log('OK-EXPORT', 'импорт skeleton_step1.json: ' + joints.length + ' узлов, ' + contours.length + ' контуров (round-trip OK)');
+    } catch (e) {
+      log('ERR-IMPORT', String((e && e.message) || e));
+    }
+  };
+  rd.onerror = () => log('ERR-IMPORT', 'чтение файла не удалось');
+  rd.readAsText(file);
+}
+
+/* ═══════════ ЭКСПОРТ ═══════════ */
+const r5 = v => Math.round(v * 100000) / 100000;
+function exportSkeleton() {
+  try {
+    const R = computeRig3D();
+    const joints2D = joints.map(j => ({
+      id: j.id, name: j.name, role: j.role, parent: j.parent, pair: j.pair,
+      x: r5(j.x), y: r5(j.y),
+      nx: r5(j.x / R.natural), ny: r5((j.y - R.floorY) / R.natural)
+    }));
+    const joints3D = joints.map(j => ({
+      id: j.id, name: j.name, role: j.role, parent: j.parent,
+      localPosition: { x: r5(R.local[j.id].x), y: r5(R.local[j.id].y), z: r5(R.local[j.id].z) },
+      worldPosition: { x: r5(R.world[j.id].x), y: r5(R.world[j.id].y), z: r5(R.world[j.id].z) }
+    }));
+    const bones = R.bones.map(b => {
+      const cj = byId(b.child), pj = byId(b.parent);
+      return {
+        name: (pj ? pj.name : '?') + '__' + (cj ? cj.name : '?'),
+        from: b.parent, to: b.child, region: b.region,
+        lengthCm: r5(b.lengthCm),
+        capsule: { radiusXCm: r5(b.radiusXCm), radiusZCm: r5(b.radiusZCm), source: b.radiusSource, contourVotes: b.votes.length }
+      };
+    });
+    const contoursOut = contours.map(ct => ({
+      id: ct.id, name: ct.name, closed: ct.closed, visible: ct.visible,
+      points: ct.points.map(p => ({ x: r5(p.x), y: r5(p.y), nx: r5(p.x / R.natural), ny: r5((p.y - R.floorY) / R.natural) }))
+    }));
+    const model = {
+      format: 'GMS-SkeletonStep1',
+      schemaVersion: 2,
+      version: VERSION,
+      generatedAt: new Date().toISOString(),
+      notes: {
+        contract: 'ось X=0 — центр; пол Y=0 по стопам; рост нормализован к 1 (nx=x/natural, ny=(y-floor)/natural); персонаж смотрит +Z; L=+X',
+        rig2D: 'единицы u (~см рисунка), Y вверх',
+        world3D: 'метры; локти −bend, колени +bend, носки вперёд ' + TOE_FWD_CM + ' см',
+        radii: 'radiusX из контура (медиана перпендикуляров) или слайдер-фолбэк; radiusZ торса из глубин'
+      },
+      parameters: {
+        targetHeightCm: R.P.height, chestDepthCm: R.P.chestD, pelvisDepthCm: R.P.pelvisD,
+        limbBendCm: R.P.bend, capsuleRadiiCm: { torso: R.P.torsoR, arms: R.P.armsR, legs: R.P.legsR },
+        toeForwardCm: TOE_FWD_CM, autoRadius: R.P.autoRadius, mirrorSymmetry: R.P.mirror,
+        naturalHeightU: r5(R.natural), appliedScale: r5(R.k),
+        floorByJoint: R.floorJoint, floorMode: R.floorMode, topByJoint: R.topJoint, topMode: R.topMode
+      },
+      stats: { joints: joints.length, bones: bones.length, contours: contours.length, radiusFromContour: R.contourBones },
+      editor: { joints: joints2D, contours: contoursOut, nextId },
+      skeleton3D: { units: 'meters', joints: joints3D, bones },
+      sketch: { source: sketch.name, widthPx: sketch.iw, heightPx: sketch.ih, opacityPercent: +$('rSketchOp').value, scale: sketch.scale, offsetU: { x: r5(sketch.ox), y: r5(sketch.oy) } },
+      meta: { valid: R.warnings.length === 0, warnings: R.warnings }
+    };
+    const json = JSON.stringify(model, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'skeleton_step1.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    log('OK-EXPORT', 'skeleton_step1.json: ' + (blob.size / 1024).toFixed(1) + ' КБ · ' + joints.length + ' узлов · ' +
+      bones.length + ' костей · ' + contours.length + ' контуров · радиус из контура: ' + R.contourBones + ' костей');
+    if (R.warnings.length) R.warnings.forEach(w => log('WARN-CHECK', w));
+    else log('SYS-INIT', 'SYS-CHECK: инварианты пола/роста/симметрии в порядке');
+  } catch (e) {
+    log('ERR-EXPORT', String((e && e.message) || e));
+    setStatus('err');
+  }
+}
+
+/* ═══════════ THREE.JS ═══════════ */
+let THREE = null, OrbitControls = null;
+let renderer, scene, camera, controls, rigGroup, contourGroup;
+let jointObjs = {}, boneMeshes = [], capMeshes = [];
+let ready3d = false, camTween = null;
+let topoSig = '', contourSig = '';
+let tmpA, tmpB, tmpDir, UP;
+let mats = {};
+const hud3d = $('hud3d'), stat3d = $('stat3d'), wrap3d = $('wrap3d');
+function makeBoneGeometry() {
+  const H = [0, 0, 0], T = [0, 1, 0];
+  const R = [[1, .25, 0], [0, .25, 1], [-1, .25, 0], [0, .25, -1]];
+  const tris = [];
+  for (let i = 0; i < 4; i++) {
+    const a = R[i], b = R[(i + 1) % 4];
+    tris.push(H, a, b); tris.push(T, b, a);
+  }
+  const pos = new Float32Array(tris.length * 3);
+  tris.forEach((v, i) => { pos[i * 3] = v[0]; pos[i * 3 + 1] = v[1]; pos[i * 3 + 2] = v[2]; });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+async function init3D() {
+  log('SYS-INIT', 'загрузка Three.js (unpkg importmap)…');
+  THREE = await import('three');
+  ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+  log('SYS-INIT', 'Three.js r' + THREE.REVISION + ' · OrbitControls OK');
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  wrap3d.appendChild(renderer.domElement);
+  window.__rigBooted = true;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1420);
+  scene.fog = new THREE.Fog(0x0d1420, 9, 22);
+  camera = new THREE.PerspectiveCamera(42, 1, 0.02, 120);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.minDistance = 0.35; controls.maxDistance = 25;
+  controls.addEventListener('start', () => { camTween = null; });
+  scene.add(new THREE.HemisphereLight(0xbfd4e6, 0x1a2230, 0.95));
+  const key = new THREE.DirectionalLight(0xffffff, 1.7);
+  key.position.set(3, 6, 4); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -3; key.shadow.camera.right = 3;
+  key.shadow.camera.top = 4; key.shadow.camera.bottom = -1;
+  key.shadow.camera.far = 20; key.shadow.bias = -0.0004;
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x88bbff, 0.55);
+  rim.position.set(-4, 3, -3); scene.add(rim);
+  const grid = new THREE.GridHelper(6, 60, 0x3a5068, 0x1c2836);
+  grid.position.y = 0.002; scene.add(grid);
+  const axes = new THREE.AxesHelper(0.5); axes.position.y = 0.004; scene.add(axes);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(3.4, 64), new THREE.ShadowMaterial({ opacity: 0.28 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  rigGroup = new THREE.Group(); scene.add(rigGroup);
+  contourGroup = new THREE.Group(); scene.add(contourGroup);
+  tmpA = new THREE.Vector3(); tmpB = new THREE.Vector3(); tmpDir = new THREE.Vector3();
+  UP = new THREE.Vector3(0, 1, 0);
+  const sphereGeo = new THREE.SphereGeometry(1, 20, 14);
+  const boneGeo = makeBoneGeometry();
+  const capGeo = new THREE.CapsuleGeometry(1, 1, 4, 12);
+  mats = { sphereGeo, boneGeo, capGeo, joint: {}, bone: {}, cap: {}, root: null, contour: null };
+  for (const s of ['center', 'left', 'right']) {
+    mats.joint[s] = new THREE.MeshStandardMaterial({ color: SIDE_HEX[s], roughness: .35, metalness: .05, emissive: SIDE_HEX[s], emissiveIntensity: .22 });
+    mats.bone[s] = new THREE.MeshStandardMaterial({ color: SIDE_HEX[s], roughness: .5, metalness: .1, emissive: SIDE_HEX[s], emissiveIntensity: .12, flatShading: true });
+    mats.cap[s] = new THREE.MeshStandardMaterial({ color: SIDE_HEX[s], transparent: true, opacity: .16, roughness: .6, depthWrite: false });
+  }
+  mats.root = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: .35, metalness: .05, emissive: 0x3b82f6, emissiveIntensity: .25 });
+  mats.contour = new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: .55 });
+  const resize3d = () => {
+    const w = wrap3d.clientWidth, h = wrap3d.clientHeight;
+    if (w < 2 || h < 2) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  };
+  new ResizeObserver(resize3d).observe(wrap3d);
+  resize3d();
+  renderer.setAnimationLoop(() => {
+    if (camTween) {
+      const t = Math.min(1, (performance.now() - camTween.t0) / camTween.dur);
+      const s = t * t * (3 - 2 * t);
+      camera.position.lerpVectors(camTween.fromPos, camTween.toPos, s);
+      controls.target.lerpVectors(camTween.fromTg, camTween.toTg, s);
+      if (t >= 1) camTween = null;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  });
+  log('SYS-INIT', '3D-сцена готова: сетка, оси, свет, тени, OrbitControls');
+}
+function rebuildRigObjects() {
+  while (rigGroup.children.length) rigGroup.remove(rigGroup.children[0]);
+  jointObjs = {}; boneMeshes = []; capMeshes = [];
+  for (const j of joints) {
+    const obj = new THREE.Object3D();
+    obj.name = j.name;
+    jointObjs[j.id] = obj;
+  }
+  for (const j of joints) {
+    const obj = jointObjs[j.id];
+    if (j.parent && jointObjs[j.parent]) jointObjs[j.parent].add(obj);
+    else rigGroup.add(obj);
+    const sph = new THREE.Mesh(mats.sphereGeo, mats.joint.center);
+    sph.scale.setScalar(j.role === 'root' ? 0.03 : (j.role === 'headtop' || j.role === 'foot') ? 0.018 : 0.022);
+    sph.castShadow = true;
+    obj.add(sph);
+    obj.userData.sph = sph;
+    if (j.parent && jointObjs[j.parent]) {
+      const bone = new THREE.Mesh(mats.boneGeo, mats.bone.center);
+      bone.castShadow = true;
+      jointObjs[j.parent].add(bone);
+      boneMeshes.push({ child: j.id, mesh: bone });
+      const cap = new THREE.Mesh(mats.capGeo, mats.cap.center);
+      scene.add(cap);
+      capMeshes.push({ child: j.id, mesh: cap });
+    }
+  }
+}
+function rebuildContourLines(R) {
+  while (contourGroup.children.length) {
+    const ch = contourGroup.children[0];
+    contourGroup.remove(ch);
+    if (ch.geometry) ch.geometry.dispose();
+  }
+  if (!readParams().showContour3D) return;
+  for (const ct of contours) {
+    if (!ct.visible || ct.points.length < 2) continue;
+    const pts = ct.points.map(p => new THREE.Vector3(p.x * R.k / 100, (p.y - R.floorY) * R.k / 100, 0));
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = ct.closed ? new THREE.LineLoop(geo, mats.contour) : new THREE.Line(geo, mats.contour);
+    contourGroup.add(line);
+  }
+}
+function sync3D(reason, logNow) {
+  const R = computeRig3D();
+  lastR = R;
+  if (ready3d) {
+    const sig = joints.map(j => j.id + ':' + (j.parent || '-')).join('|') + '#' + joints.length;
+    if (sig !== topoSig) {
+      /* убрать старые капсулы из сцены */
+      for (const c of capMeshes) scene.remove(c.mesh);
+      rebuildRigObjects();
+      topoSig = sig;
+    }
+    for (const j of joints) {
+      const obj = jointObjs[j.id];
+      if (!obj) continue;
+      const l = R.local[j.id];
+      obj.position.set(l.x, l.y, l.z);
+      const side = sideOf(j);
+      obj.userData.sph.material = j.role === 'root' ? mats.root : mats.joint[side];
+    }
+    for (const b of boneMeshes) {
+      const j = byId(b.child);
+      if (!j) { b.mesh.visible = false; continue; }
+      const l = R.local[j.id];
+      tmpDir.set(l.x, l.y, l.z);
+      const len = tmpDir.length();
+      if (len < 1e-6) { b.mesh.visible = false; continue; }
+      b.mesh.visible = true;
+      b.mesh.position.set(0, 0, 0);
+      b.mesh.quaternion.setFromUnitVectors(UP, tmpDir.normalize());
+      const r = Math.min(0.03, Math.max(0.008, len * 0.12));
+      b.mesh.scale.set(r, len, r);
+      b.mesh.material = mats.bone[sideOf(j)];
+    }
+    const boneByChild = {};
+    R.bones.forEach(b => { boneByChild[b.child] = b; });
+    for (const c of capMeshes) {
+      const b = boneByChild[c.child];
+      const j = byId(c.child);
+      if (!b || !j || !b.region) { c.mesh.visible = false; continue; }
+      const a = R.world[b.parent], w = R.world[b.child];
+      tmpA.set(a.x, a.y, a.z); tmpB.set(w.x, w.y, w.z);
+      tmpDir.subVectors(tmpB, tmpA);
+      const len = tmpDir.length();
+      if (len < 1e-5) { c.mesh.visible = false; continue; }
+      c.mesh.visible = true;
+      c.mesh.position.copy(tmpA).addScaledVector(tmpDir, 0.5);
+      c.mesh.quaternion.setFromUnitVectors(UP, tmpDir.normalize());
+      c.mesh.scale.set(b.radiusXCm / 100, len / 3, b.radiusZCm / 100);
+      c.mesh.material = mats.cap[sideOf(j)];
+    }
+    const csig = contours.map(c => c.id + ':' + c.visible + ':' + c.closed + ':' + c.points.length).join('|') +
+      '#' + R.k.toFixed(4) + '#' + R.floorY.toFixed(3) + '#' + (readParams().showContour3D ? 1 : 0);
+    if (csig !== contourSig) { rebuildContourLines(R); contourSig = csig; }
+    rigGroup.updateMatrixWorld(true);
+    hud3d.innerHTML = 'Рост: <b>' + R.P.height + ' см</b> · натуральный ' + R.natural.toFixed(1) + ' u · ×' + R.k.toFixed(3) +
+      '<br>пол по <b>' + escHtml(R.floorJoint) + '</b> (' + R.floorMode + ') · верх по <b>' + escHtml(R.topJoint) + '</b><br>' +
+      'узлов: <b>' + joints.length + '</b> · костей: <b>' + R.bones.length + '</b> · радиус из контура: <b>' + R.contourBones + '</b>';
+    stat3d.textContent = R.P.height + ' см · ' + joints.length + ' узлов';
+  }
+  if (logNow) {
+    log('RIG-3D-SYNC', '[' + reason + '] ' + joints.length + ' узлов / ' + R.bones.length + ' костей → 3D · рост=' +
+      R.P.height + 'см (×' + R.k.toFixed(3) + ') · пол=' + R.floorJoint + ' · радиус контура: ' + R.contourBones + ' костей');
+  }
+}
+function setView(name, instant) {
+  if (!ready3d) return;
+  const H = readParams().height / 100;
+  const d = H * 1.95;
+  const tg = new THREE.Vector3(0, H * 0.5, 0);
+  let pos;
+  if (name === 'front') pos = new THREE.Vector3(0, H * 0.5, d);
+  else if (name === 'side') pos = new THREE.Vector3(d, H * 0.5, 0);
+  else { pos = new THREE.Vector3(H * 1.3, H * 0.92, H * 1.62); tg.set(0, H * 0.45, 0); }
+  if (instant) { camera.position.copy(pos); controls.target.copy(tg); controls.update(); camTween = null; }
+  else camTween = { t0: performance.now(), dur: 450, fromPos: camera.position.clone(), toPos: pos, fromTg: controls.target.clone(), toTg: tg };
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+}
+
+/* ═══════════ ПРИВЯЗКА UI ═══════════ */
+function bindUI() {
+  const cm = v => v + ' см', pct = v => v + ' %', x2 = v => (+v).toFixed(2) + '×';
+  bindSlider('rSketchOp', 'vSketchOp', pct, 'прозрачность');
+  bindSlider('rSketchScale', 'vSketchScale', x2, 'масштаб кальки');
+  bindSlider('rHeight', 'vHeight', cm, 'рост');
+  bindSlider('rChestD', 'vChestD', cm, 'глубина груди');
+  bindSlider('rPelvisD', 'vPelvisD', cm, 'глубина таза');
+  bindSlider('rBend', 'vBend', cm, 'сгиб Z');
+  bindSlider('rTorsoR', 'vTorsoR', cm, 'объём торса');
+  bindSlider('rArmsR', 'vArmsR', cm, 'объём рук');
+  bindSlider('rLegsR', 'vLegsR', cm, 'объём ног');
+  /* масштаб кальки через слайдер */
+  $('rSketchScale').addEventListener('input', () => { sketch.scale = +$('rSketchScale').value; requestDraw(); });
+  $('bLoadSketch').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', () => { loadSketchFile($('fileInput').files[0]); $('fileInput').value = ''; });
+  $('bTestSketch').addEventListener('click', () => {
+    const cv = makeTestSketch();
+    setSketch(cv, 'Тестовый эскиз (анатомия)', cv.toDataURL('image/png'));
+  });
+  $('bResetSketch').addEventListener('click', () => {
+    sketch.ox = 0; sketch.oy = 90; sketch.scale = 1;
+    SL.rSketchScale.set('1'); requestDraw(); scheduleSave();
+    log('SKETCH-LOAD', 'калька сброшена: центр (0,90), ×1.00');
+  });
+  document.querySelectorAll('.tool-btn').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  document.querySelectorAll('.cmode-btn').forEach(b => b.addEventListener('click', () => {
+    cmode = b.dataset.cmode;
+    document.querySelectorAll('.cmode-btn').forEach(x => x.classList.toggle('active', x === b));
+    cancelDrawing(); updateHint();
+  }));
+  $('bTPose').addEventListener('click', () => applyPreset('T'));
+  $('bAPose').addEventListener('click', () => applyPreset('A'));
+  $('bSym').addEventListener('click', symmetrize);
+  $('bClear').addEventListener('click', clearAll);
+  $('bFit').addEventListener('click', fitSkeleton);
+  $('cMirror').addEventListener('change', () => {
+    if ($('cMirror').checked) symmetrize();
+    else { log('EDIT', 'зеркало OFF'); requestDraw(); }
+  });
+  $('cAutoRadius').addEventListener('change', () => { sync3D('авто-радиус', true); scheduleSave(); });
+  $('cShowContour3D').addEventListener('change', () => { sync3D('контуры 3D', true); scheduleSave(); });
+  $('cCloseContour').addEventListener('change', scheduleSave);
+  $('bUndo').addEventListener('click', doUndo);
+  $('bRedo').addEventListener('click', doRedo);
+  $('bImport').addEventListener('click', () => $('fileImport').click());
+  $('fileImport').addEventListener('change', () => { importJSON($('fileImport').files[0]); $('fileImport').value = ''; });
+  document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('bExport').addEventListener('click', exportSkeleton);
+  $('bCopy').addEventListener('click', copyLog);
+  $('bClear').addEventListener('click', clearLog);
+  $('bCollapse').addEventListener('click', () => {
+    consoleEl.classList.toggle('collapsed');
+    $('bCollapse').textContent = consoleEl.classList.contains('collapsed') ? '▴' : '▾';
+  });
+}
+
+/* ═══════════ ЗАПУСК ═══════════ */
+async function boot() {
+  log('SYS-INIT', 'GMS-0047 · SKELETON CONSTRUCTOR v' + VERSION + ' · свободная сборка, контуры, undo, автосохранение');
+  bindUI();
+  bind2dInput();
+  resize2d();
+  const restored = loadSession();
+  if (!restored) {
+    applyPresetSilent();
+    const cv = makeTestSketch();
+    sketch.img = cv; sketch.iw = cv.width; sketch.ih = cv.height;
+    sketch.dataURL = cv.toDataURL('image/png');
+    sketch.name = 'Тестовый эскиз (анатомия)';
+    log('SKETCH-LOAD', 'тестовый эскиз сгенерирован (анатомическая база, без плаща)');
+  }
+  pushInitialSnapshot();
+  updateStat2d(); renderInspector(); renderContours(); updateHint();
+  requestDraw();
+  setStatus('busy');
+  try {
+    await init3D();
+    ready3d = true;
+    sync3D('инициализация', true);
+    setView('3d', true);
+    setStatus('ok');
+    log('SYS-INIT', 'система готова: стройте скелет с нуля или от пресета; контуры задают толщину болванки');
+  } catch (e) {
+    log('ERR-CDN', 'Three.js: ' + String((e && e.message) || e));
+    const div = document.createElement('div');
+    div.className = 'boot-error';
+    div.innerHTML = 'ОШИБКА ЗАГРУЗКИ THREE.JS<br>проверьте доступ к unpkg.com<br>2D-КОНСТРУКТОР И ЭКСПОРТ JSON РАБОТАЮТ АВТОНОМНО';
+    wrap3d.appendChild(div);
+    hud3d.textContent = '3D-превью недоступно';
+    stat3d.textContent = 'offline';
+    log('WARN-3D', '3D недоступно — экспорт считается чистой математикой computeRig3D()');
+    setStatus('err');
+  }
+  scheduleSave();
+}
+function applyPresetSilent() {
+  /* то же, что applyPreset, но без commit/лога (для первого запуска) */
+  const table = [
+    ['Pelvis', 'root', 0, 96, null, null],
+    ['Spine', 'spine', 0, 112, 'Pelvis', null],
+    ['Chest', 'chest', 0, 132, 'Spine', null],
+    ['Neck', 'neck', 0, 152, 'Chest', null],
+    ['Head', 'head', 0, 166, 'Neck', null],
+    ['HeadTop', 'headtop', 0, 180, 'Head', null],
+    ['Shoulder_L', 'arm', 20, 146, 'Chest', 'Shoulder_R'],
+    ['Elbow_L', 'arm', 42, 124, 'Shoulder_L', 'Elbow_R'],
+    ['Wrist_L', 'hand', 61, 105, 'Elbow_L', 'Wrist_R'],
+    ['Shoulder_R', 'arm', -20, 146, 'Chest', 'Shoulder_L'],
+    ['Elbow_R', 'arm', -42, 124, 'Shoulder_R', 'Elbow_L'],
+    ['Wrist_R', 'hand', -61, 105, 'Elbow_R', 'Wrist_L'],
+    ['Hip_L', 'leg', 10, 92, 'Pelvis', 'Hip_R'],
+    ['Knee_L', 'leg', 12, 50, 'Hip_L', 'Knee_R'],
+    ['Ankle_L', 'foot', 13, 7, 'Knee_L', 'Ankle_R'],
+    ['Toe_L', 'foot', 14, 2, 'Ankle_L', 'Toe_R'],
+    ['Hip_R', 'leg', -10, 92, 'Pelvis', 'Hip_L'],
+    ['Knee_R', 'leg', -12, 50, 'Hip_R', 'Knee_L'],
+    ['Ankle_R', 'foot', -13, 7, 'Knee_R', 'Ankle_L'],
+    ['Toe_R', 'foot', -14, 2, 'Ankle_R', 'Toe_L']
+  ];
+  const ids = {};
+  joints = [];
+  for (const row of table) {
+    const id = 'j' + (nextId++);
+    ids[row[0]] = id;
+    joints.push({ id, name: row[0], role: row[1], x: row[2], y: row[3], parent: null, pair: null });
+  }
+  for (const row of table) {
+    const j = byId(ids[row[0]]);
+    j.parent = row[4] ? ids[row[4]] : null;
+    j.pair = row[5] ? ids[row[5]] : null;
+  }
+}
+boot();
+</script>
+</body>
+</html>

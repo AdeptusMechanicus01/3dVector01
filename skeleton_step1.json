@@ -1,0 +1,853 @@
+{
+  "format": "GMS-SkeletonStep1",
+  "schemaVersion": 2,
+  "version": "2.0.0",
+  "generatedAt": "2026-11-19T11:01:47.962Z",
+  "notes": {
+    "contract": "ось X=0 — центр; пол Y=0 по стопам; рост нормализован к 1 (nx=x/natural, ny=(y-floor)/natural); персонаж смотрит +Z; L=+X",
+    "rig2D": "единицы u (~см рисунка), Y вверх",
+    "world3D": "метры; локти −bend, колени +bend, носки вперёд 10 см",
+    "radii": "radiusX из контура (медиана перпендикуляров) или слайдер-фолбэк; radiusZ торса из глубин"
+  },
+  "parameters": {
+    "targetHeightCm": 187,
+    "chestDepthCm": 41,
+    "pelvisDepthCm": 26,
+    "limbBendCm": 4,
+    "capsuleRadiiCm": {
+      "torso": 15,
+      "arms": 6,
+      "legs": 9
+    },
+    "toeForwardCm": 10,
+    "autoRadius": true,
+    "mirrorSymmetry": true,
+    "naturalHeightU": 180.29944,
+    "appliedScale": 1.03716,
+    "floorByJoint": "Toe_L",
+    "floorMode": "foot",
+    "topByJoint": "HeadTop",
+    "topMode": "headtop"
+  },
+  "stats": {
+    "joints": 20,
+    "bones": 19,
+    "contours": 0,
+    "radiusFromContour": 0
+  },
+  "editor": {
+    "joints": [
+      {
+        "id": "j64",
+        "name": "Pelvis",
+        "role": "root",
+        "parent": null,
+        "pair": null,
+        "x": 0,
+        "y": 96,
+        "nx": 0,
+        "ny": 0.52135
+      },
+      {
+        "id": "j65",
+        "name": "Spine",
+        "role": "spine",
+        "parent": "j64",
+        "pair": null,
+        "x": 0,
+        "y": 112,
+        "nx": 0,
+        "ny": 0.6101
+      },
+      {
+        "id": "j66",
+        "name": "Chest",
+        "role": "chest",
+        "parent": "j65",
+        "pair": null,
+        "x": 0,
+        "y": 132,
+        "nx": 0,
+        "ny": 0.72102
+      },
+      {
+        "id": "j67",
+        "name": "Neck",
+        "role": "neck",
+        "parent": "j66",
+        "pair": null,
+        "x": 0,
+        "y": 154.40239,
+        "nx": 0,
+        "ny": 0.84527
+      },
+      {
+        "id": "j68",
+        "name": "Head",
+        "role": "head",
+        "parent": "j67",
+        "pair": null,
+        "x": 0,
+        "y": 168.98493,
+        "nx": 0,
+        "ny": 0.92615
+      },
+      {
+        "id": "j69",
+        "name": "HeadTop",
+        "role": "headtop",
+        "parent": "j68",
+        "pair": null,
+        "x": 0,
+        "y": 182.29944,
+        "nx": 0,
+        "ny": 1
+      },
+      {
+        "id": "j70",
+        "name": "Shoulder_L",
+        "role": "arm",
+        "parent": "j66",
+        "pair": "j73",
+        "x": 20,
+        "y": 146,
+        "nx": 0.11093,
+        "ny": 0.79867
+      },
+      {
+        "id": "j71",
+        "name": "Elbow_L",
+        "role": "arm",
+        "parent": "j70",
+        "pair": "j74",
+        "x": 42.4796,
+        "y": 142.35593,
+        "nx": 0.23561,
+        "ny": 0.77846
+      },
+      {
+        "id": "j72",
+        "name": "Wrist_L",
+        "role": "hand",
+        "parent": "j71",
+        "pair": "j75",
+        "x": 70.37665,
+        "y": 141.72191,
+        "nx": 0.39033,
+        "ny": 0.77494
+      },
+      {
+        "id": "j73",
+        "name": "Shoulder_R",
+        "role": "arm",
+        "parent": "j66",
+        "pair": "j70",
+        "x": -20,
+        "y": 146,
+        "nx": -0.11093,
+        "ny": 0.79867
+      },
+      {
+        "id": "j74",
+        "name": "Elbow_R",
+        "role": "arm",
+        "parent": "j73",
+        "pair": "j71",
+        "x": -42.4796,
+        "y": 142.35593,
+        "nx": -0.23561,
+        "ny": 0.77846
+      },
+      {
+        "id": "j75",
+        "name": "Wrist_R",
+        "role": "hand",
+        "parent": "j74",
+        "pair": "j72",
+        "x": -70.37665,
+        "y": 141.72191,
+        "nx": -0.39033,
+        "ny": 0.77494
+      },
+      {
+        "id": "j76",
+        "name": "Hip_L",
+        "role": "leg",
+        "parent": "j64",
+        "pair": "j80",
+        "x": 10,
+        "y": 92,
+        "nx": 0.05546,
+        "ny": 0.49917
+      },
+      {
+        "id": "j77",
+        "name": "Knee_L",
+        "role": "leg",
+        "parent": "j76",
+        "pair": "j81",
+        "x": 12,
+        "y": 50,
+        "nx": 0.06656,
+        "ny": 0.26622
+      },
+      {
+        "id": "j78",
+        "name": "Ankle_L",
+        "role": "foot",
+        "parent": "j77",
+        "pair": "j82",
+        "x": 13,
+        "y": 7,
+        "nx": 0.0721,
+        "ny": 0.02773
+      },
+      {
+        "id": "j79",
+        "name": "Toe_L",
+        "role": "foot",
+        "parent": "j78",
+        "pair": "j83",
+        "x": 14,
+        "y": 2,
+        "nx": 0.07765,
+        "ny": 0
+      },
+      {
+        "id": "j80",
+        "name": "Hip_R",
+        "role": "leg",
+        "parent": "j64",
+        "pair": "j76",
+        "x": -10,
+        "y": 92,
+        "nx": -0.05546,
+        "ny": 0.49917
+      },
+      {
+        "id": "j81",
+        "name": "Knee_R",
+        "role": "leg",
+        "parent": "j80",
+        "pair": "j77",
+        "x": -12,
+        "y": 50,
+        "nx": -0.06656,
+        "ny": 0.26622
+      },
+      {
+        "id": "j82",
+        "name": "Ankle_R",
+        "role": "foot",
+        "parent": "j81",
+        "pair": "j78",
+        "x": -13,
+        "y": 7,
+        "nx": -0.0721,
+        "ny": 0.02773
+      },
+      {
+        "id": "j83",
+        "name": "Toe_R",
+        "role": "foot",
+        "parent": "j82",
+        "pair": "j79",
+        "x": -14,
+        "y": 2,
+        "nx": -0.07765,
+        "ny": 0
+      }
+    ],
+    "contours": [],
+    "nextId": 84
+  },
+  "skeleton3D": {
+    "units": "meters",
+    "joints": [
+      {
+        "id": "j64",
+        "name": "Pelvis",
+        "role": "root",
+        "parent": null,
+        "localPosition": {
+          "x": 0,
+          "y": 0.97493,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0,
+          "y": 0.97493,
+          "z": 0
+        }
+      },
+      {
+        "id": "j65",
+        "name": "Spine",
+        "role": "spine",
+        "parent": "j64",
+        "localPosition": {
+          "x": 0,
+          "y": 0.16595,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0,
+          "y": 1.14088,
+          "z": 0
+        }
+      },
+      {
+        "id": "j66",
+        "name": "Chest",
+        "role": "chest",
+        "parent": "j65",
+        "localPosition": {
+          "x": 0,
+          "y": 0.20743,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0,
+          "y": 1.34831,
+          "z": 0
+        }
+      },
+      {
+        "id": "j67",
+        "name": "Neck",
+        "role": "neck",
+        "parent": "j66",
+        "localPosition": {
+          "x": 0,
+          "y": 0.23235,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0,
+          "y": 1.58066,
+          "z": 0
+        }
+      },
+      {
+        "id": "j68",
+        "name": "Head",
+        "role": "head",
+        "parent": "j67",
+        "localPosition": {
+          "x": 0,
+          "y": 0.15124,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0,
+          "y": 1.73191,
+          "z": 0
+        }
+      },
+      {
+        "id": "j69",
+        "name": "HeadTop",
+        "role": "headtop",
+        "parent": "j68",
+        "localPosition": {
+          "x": 0,
+          "y": 0.13809,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0,
+          "y": 1.87,
+          "z": 0
+        }
+      },
+      {
+        "id": "j70",
+        "name": "Shoulder_L",
+        "role": "arm",
+        "parent": "j66",
+        "localPosition": {
+          "x": 0.20743,
+          "y": 0.1452,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0.20743,
+          "y": 1.49352,
+          "z": 0
+        }
+      },
+      {
+        "id": "j71",
+        "name": "Elbow_L",
+        "role": "arm",
+        "parent": "j70",
+        "localPosition": {
+          "x": 0.23315,
+          "y": -0.03779,
+          "z": -0.04
+        },
+        "worldPosition": {
+          "x": 0.44058,
+          "y": 1.45572,
+          "z": -0.04
+        }
+      },
+      {
+        "id": "j72",
+        "name": "Wrist_L",
+        "role": "hand",
+        "parent": "j71",
+        "localPosition": {
+          "x": 0.28934,
+          "y": -0.00658,
+          "z": 0.04
+        },
+        "worldPosition": {
+          "x": 0.72992,
+          "y": 1.44914,
+          "z": 0
+        }
+      },
+      {
+        "id": "j73",
+        "name": "Shoulder_R",
+        "role": "arm",
+        "parent": "j66",
+        "localPosition": {
+          "x": -0.20743,
+          "y": 0.1452,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": -0.20743,
+          "y": 1.49352,
+          "z": 0
+        }
+      },
+      {
+        "id": "j74",
+        "name": "Elbow_R",
+        "role": "arm",
+        "parent": "j73",
+        "localPosition": {
+          "x": -0.23315,
+          "y": -0.03779,
+          "z": -0.04
+        },
+        "worldPosition": {
+          "x": -0.44058,
+          "y": 1.45572,
+          "z": -0.04
+        }
+      },
+      {
+        "id": "j75",
+        "name": "Wrist_R",
+        "role": "hand",
+        "parent": "j74",
+        "localPosition": {
+          "x": -0.28934,
+          "y": -0.00658,
+          "z": 0.04
+        },
+        "worldPosition": {
+          "x": -0.72992,
+          "y": 1.44914,
+          "z": 0
+        }
+      },
+      {
+        "id": "j76",
+        "name": "Hip_L",
+        "role": "leg",
+        "parent": "j64",
+        "localPosition": {
+          "x": 0.10372,
+          "y": -0.04149,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": 0.10372,
+          "y": 0.93345,
+          "z": 0
+        }
+      },
+      {
+        "id": "j77",
+        "name": "Knee_L",
+        "role": "leg",
+        "parent": "j76",
+        "localPosition": {
+          "x": 0.02074,
+          "y": -0.43561,
+          "z": 0.04
+        },
+        "worldPosition": {
+          "x": 0.12446,
+          "y": 0.49784,
+          "z": 0.04
+        }
+      },
+      {
+        "id": "j78",
+        "name": "Ankle_L",
+        "role": "foot",
+        "parent": "j77",
+        "localPosition": {
+          "x": 0.01037,
+          "y": -0.44598,
+          "z": -0.04
+        },
+        "worldPosition": {
+          "x": 0.13483,
+          "y": 0.05186,
+          "z": 0
+        }
+      },
+      {
+        "id": "j79",
+        "name": "Toe_L",
+        "role": "foot",
+        "parent": "j78",
+        "localPosition": {
+          "x": 0.01037,
+          "y": -0.05186,
+          "z": 0.1
+        },
+        "worldPosition": {
+          "x": 0.1452,
+          "y": 0,
+          "z": 0.1
+        }
+      },
+      {
+        "id": "j80",
+        "name": "Hip_R",
+        "role": "leg",
+        "parent": "j64",
+        "localPosition": {
+          "x": -0.10372,
+          "y": -0.04149,
+          "z": 0
+        },
+        "worldPosition": {
+          "x": -0.10372,
+          "y": 0.93345,
+          "z": 0
+        }
+      },
+      {
+        "id": "j81",
+        "name": "Knee_R",
+        "role": "leg",
+        "parent": "j80",
+        "localPosition": {
+          "x": -0.02074,
+          "y": -0.43561,
+          "z": 0.04
+        },
+        "worldPosition": {
+          "x": -0.12446,
+          "y": 0.49784,
+          "z": 0.04
+        }
+      },
+      {
+        "id": "j82",
+        "name": "Ankle_R",
+        "role": "foot",
+        "parent": "j81",
+        "localPosition": {
+          "x": -0.01037,
+          "y": -0.44598,
+          "z": -0.04
+        },
+        "worldPosition": {
+          "x": -0.13483,
+          "y": 0.05186,
+          "z": 0
+        }
+      },
+      {
+        "id": "j83",
+        "name": "Toe_R",
+        "role": "foot",
+        "parent": "j82",
+        "localPosition": {
+          "x": -0.01037,
+          "y": -0.05186,
+          "z": 0.1
+        },
+        "worldPosition": {
+          "x": -0.1452,
+          "y": 0,
+          "z": 0.1
+        }
+      }
+    ],
+    "bones": [
+      {
+        "name": "Pelvis__Spine",
+        "from": "j64",
+        "to": "j65",
+        "region": "pelvis",
+        "lengthCm": 16.59462,
+        "capsule": {
+          "radiusXCm": 14.25,
+          "radiusZCm": 13,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Spine__Chest",
+        "from": "j65",
+        "to": "j66",
+        "region": "belly",
+        "lengthCm": 20.74327,
+        "capsule": {
+          "radiusXCm": 13.5,
+          "radiusZCm": 16.75,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Chest__Neck",
+        "from": "j66",
+        "to": "j67",
+        "region": "chest",
+        "lengthCm": 23.23494,
+        "capsule": {
+          "radiusXCm": 15,
+          "radiusZCm": 20.5,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Neck__Head",
+        "from": "j67",
+        "to": "j68",
+        "region": "neck",
+        "lengthCm": 15.12449,
+        "capsule": {
+          "radiusXCm": 5,
+          "radiusZCm": 5,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Head__HeadTop",
+        "from": "j68",
+        "to": "j69",
+        "region": "head",
+        "lengthCm": 13.80931,
+        "capsule": {
+          "radiusXCm": 6.21419,
+          "radiusZCm": 6.21419,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Chest__Shoulder_L",
+        "from": "j66",
+        "to": "j70",
+        "region": "shoulder",
+        "lengthCm": 25.32039,
+        "capsule": {
+          "radiusXCm": 6.9,
+          "radiusZCm": 6.9,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Shoulder_L__Elbow_L",
+        "from": "j70",
+        "to": "j71",
+        "region": "arm",
+        "lengthCm": 23.95568,
+        "capsule": {
+          "radiusXCm": 6,
+          "radiusZCm": 6,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Elbow_L__Wrist_L",
+        "from": "j71",
+        "to": "j72",
+        "region": "hand",
+        "lengthCm": 29.21639,
+        "capsule": {
+          "radiusXCm": 4.8,
+          "radiusZCm": 4.8,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Chest__Shoulder_R",
+        "from": "j66",
+        "to": "j73",
+        "region": "shoulder",
+        "lengthCm": 25.32039,
+        "capsule": {
+          "radiusXCm": 6.9,
+          "radiusZCm": 6.9,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Shoulder_R__Elbow_R",
+        "from": "j73",
+        "to": "j74",
+        "region": "arm",
+        "lengthCm": 23.95568,
+        "capsule": {
+          "radiusXCm": 6,
+          "radiusZCm": 6,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Elbow_R__Wrist_R",
+        "from": "j74",
+        "to": "j75",
+        "region": "hand",
+        "lengthCm": 29.21639,
+        "capsule": {
+          "radiusXCm": 4.8,
+          "radiusZCm": 4.8,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Pelvis__Hip_L",
+        "from": "j64",
+        "to": "j76",
+        "region": "thigh",
+        "lengthCm": 11.17059,
+        "capsule": {
+          "radiusXCm": 9.45,
+          "radiusZCm": 9.45,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Hip_L__Knee_L",
+        "from": "j76",
+        "to": "j77",
+        "region": "shin",
+        "lengthCm": 43.79329,
+        "capsule": {
+          "radiusXCm": 9,
+          "radiusZCm": 9,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Knee_L__Ankle_L",
+        "from": "j77",
+        "to": "j78",
+        "region": "foot",
+        "lengthCm": 44.78906,
+        "capsule": {
+          "radiusXCm": 4.95,
+          "radiusZCm": 4.95,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Ankle_L__Toe_L",
+        "from": "j78",
+        "to": "j79",
+        "region": "foot",
+        "lengthCm": 11.31231,
+        "capsule": {
+          "radiusXCm": 4.95,
+          "radiusZCm": 4.95,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Pelvis__Hip_R",
+        "from": "j64",
+        "to": "j80",
+        "region": "thigh",
+        "lengthCm": 11.17059,
+        "capsule": {
+          "radiusXCm": 9.45,
+          "radiusZCm": 9.45,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Hip_R__Knee_R",
+        "from": "j80",
+        "to": "j81",
+        "region": "shin",
+        "lengthCm": 43.79329,
+        "capsule": {
+          "radiusXCm": 9,
+          "radiusZCm": 9,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Knee_R__Ankle_R",
+        "from": "j81",
+        "to": "j82",
+        "region": "foot",
+        "lengthCm": 44.78906,
+        "capsule": {
+          "radiusXCm": 4.95,
+          "radiusZCm": 4.95,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      },
+      {
+        "name": "Ankle_R__Toe_R",
+        "from": "j82",
+        "to": "j83",
+        "region": "foot",
+        "lengthCm": 11.31231,
+        "capsule": {
+          "radiusXCm": 4.95,
+          "radiusZCm": 4.95,
+          "source": "slider",
+          "contourVotes": 0
+        }
+      }
+    ]
+  },
+  "sketch": {
+    "source": "5f2bd08795e8ab14bba7b3a820cfb024.png",
+    "widthPx": 2720,
+    "heightPx": 1536,
+    "opacityPercent": 55,
+    "scale": 1.5198933635319618,
+    "offsetU": {
+      "x": 162.27169,
+      "y": 89.06534
+    }
+  },
+  "meta": {
+    "valid": true,
+    "warnings": []
+  }
+}

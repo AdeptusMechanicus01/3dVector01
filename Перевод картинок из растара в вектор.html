@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMS-0047 · Конвертер растровой в векторную графику</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpolygon points='2,14 8,2 14,14' fill='none' stroke='%2322d3ee' stroke-width='2'/%3E%3C/svg%3E">
+<script>
+/* Ранний перехватчик ошибок: буферизует всё, что упало до инициализации консоли */
+window.__earlyErr = [];
+window.onerror = function (m, s, l, c) { window.__earlyErr.push(m + ' @ ' + (s || 'inline') + ':' + l + ':' + c); return false; };
+</script>
+<style>
+:root{
+  --bg:#0a0e13; --panel:#10151c; --panel2:#0d1218; --line:#1e2833; --line2:#26313f;
+  --txt:#d7e0ea; --dim:#7c8b9d; --dim2:#5b6b7d;
+  --acc:#22d3ee; --acc2:#fbbf24; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+  --mono:ui-monospace,'Cascadia Mono','JetBrains Mono',Consolas,'Liberation Mono',monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--txt);font-family:var(--sans);
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;overflow:hidden;
+}
+::selection{background:rgba(34,211,238,.3)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:#0c1117}
+::-webkit-scrollbar-thumb{background:#243040;border-radius:5px;border:2px solid #0c1117}
+::-webkit-scrollbar-thumb:hover{background:#31445c}
+*{scrollbar-width:thin;scrollbar-color:#243040 #0c1117}
+
+/* ── Шапка ─────────────────────────────────────────────── */
+.app-header{
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid var(--line2);
+  background:linear-gradient(180deg,#121924,#0d1218);
+}
+.brand small{display:block;font:700 10px var(--mono);letter-spacing:2px;color:var(--acc2);margin-bottom:3px}
+.brand h1{font:600 15px/1.2 var(--sans);letter-spacing:.4px;color:#eef4fa}
+.head-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{
+  font:600 11px/1 var(--mono);letter-spacing:.8px;text-transform:uppercase;
+  color:var(--txt);background:#141b24;border:1px solid var(--line2);border-radius:7px;
+  padding:9px 13px;cursor:pointer;transition:border-color .15s,box-shadow .15s,color .15s;
+}
+.btn:hover{border-color:var(--acc);color:#fff;box-shadow:0 0 12px rgba(34,211,238,.25)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;transform:none}
+.btn-acc{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.55);color:var(--acc)}
+.btn-acc:hover{color:#aef3ff}
+.btn-sm{padding:5px 9px;font-size:10px;border-radius:5px}
+.btn.active{border-color:var(--acc2);color:var(--acc2);background:rgba(251,191,36,.1)}
+.status{font:700 10px var(--mono);letter-spacing:1.2px;padding:7px 11px;border-radius:6px;border:1px solid var(--line2);color:var(--dim)}
+.status.ok{color:var(--ok);border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.08)}
+.status.busy{color:var(--warn);border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.08)}
+.status.err{color:var(--err);border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.1)}
+
+/* ── Основная сетка ────────────────────────────────────── */
+#main{display:grid;grid-template-columns:322px minmax(0,1fr);min-height:0}
+#settings{
+  background:var(--panel);border-right:1px solid var(--line2);
+  padding:14px 16px;overflow-y:auto;min-height:0;
+}
+.group{margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed #1c2632}
+.group:last-child{border-bottom:none;margin-bottom:0}
+.g-title{font:700 10px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.g-title b{color:var(--acc)}
+.g-title i{color:var(--acc2);font-style:normal}
+.ctl{margin-bottom:12px}
+.ctl:last-child{margin-bottom:0}
+.ctl-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.ctl-name{font-size:12px;color:var(--txt)}
+.val{font:700 11px var(--mono);color:var(--acc2);background:rgba(251,191,36,.08);
+  border:1px solid rgba(251,191,36,.25);border-radius:4px;padding:2px 7px;white-space:nowrap}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+  background:#1e2833;outline:none;margin:10px 0 2px;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:4px;
+  background:#e8f6fb;border:2px solid var(--acc);cursor:pointer;box-shadow:0 0 8px rgba(34,211,238,.5);
+}
+input[type=range]::-moz-range-thumb{
+  width:11px;height:11px;border-radius:4px;background:#e8f6fb;border:2px solid var(--acc);cursor:pointer;
+}
+input[type=range]::-moz-range-track{background:transparent}
+select{
+  width:100%;background:#141b24;color:var(--txt);border:1px solid var(--line2);border-radius:7px;
+  padding:8px 10px;font:600 12px var(--mono);outline:none;cursor:pointer;margin-top:6px;
+}
+select:hover,select:focus{border-color:var(--acc)}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;padding:7px 0;font-size:12px;color:var(--txt);user-select:none}
+.switch input{display:none}
+.switch .tr{width:34px;height:18px;border-radius:10px;background:#1e2833;border:1px solid #2a3644;position:relative;flex:none;transition:.15s}
+.switch .tr::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#7c8b9d;transition:.15s}
+.switch input:checked + .tr{background:rgba(34,211,238,.25);border-color:var(--acc)}
+.switch input:checked + .tr::after{left:18px;background:var(--acc)}
+.switch:hover .tr{border-color:var(--acc)}
+#palette{display:flex;flex-wrap:wrap;gap:9px}
+.chip{display:flex;flex-direction:column;gap:3px;font:10px var(--mono)}
+.chip .sw{width:28px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.15)}
+.chip .hx{color:var(--txt)}
+.chip .pc{color:var(--dim)}
+.chip-bg{opacity:.5}
+.export-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.footnote{font:10px/1.6 var(--mono);color:var(--dim2);letter-spacing:.3px}
+
+/* ── Рабочая область ───────────────────────────────────── */
+#workspace{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;min-width:0;min-height:0}
+.pane{
+  display:flex;flex-direction:column;min-width:0;min-height:0;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:10px;overflow:hidden;
+}
+.pane-head{
+  flex:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;
+  border-bottom:1px solid var(--line);background:#111823;
+}
+.pane-title{font:700 10px var(--mono);letter-spacing:1.8px;color:var(--dim);white-space:nowrap;flex:none}
+.pane-stats{flex:1;min-width:0;text-align:right;font:700 11px var(--mono);color:var(--acc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zoombar{display:flex;gap:5px;flex:none}
+.pane-body{flex:1;position:relative;min-height:0;overflow:hidden}
+#srcBody{background-color:#0f141b;background-image:radial-gradient(#1a2430 1px,transparent 1px);background-size:22px 22px;cursor:grab;touch-action:none}
+#srcBody.grabbing{cursor:grabbing}
+#srcBody.cropping{cursor:crosshair}
+#srcCanvas{position:absolute;left:0;top:0;transform-origin:0 0;image-rendering:pixelated;
+  box-shadow:0 0 0 1px var(--line2),0 12px 44px rgba(0,0,0,.65)}
+#roiOverlay{position:absolute;display:none;border:1.5px dashed var(--acc);background:rgba(34,211,238,.12);pointer-events:none;z-index:5}
+.drop-hint{position:absolute;left:10px;bottom:8px;font:10px var(--mono);letter-spacing:1px;color:var(--dim2);pointer-events:none;z-index:4}
+#srcBody.drop::after{
+  content:'ОТПУСТИТЕ ФАЙЛ ДЛЯ ЗАГРУЗКИ';position:absolute;inset:8px;border:2px dashed var(--acc);
+  display:grid;place-items:center;color:var(--acc);font:700 12px var(--mono);letter-spacing:1.5px;
+  background:rgba(34,211,238,.07);border-radius:8px;z-index:6;
+}
+#vecBody{background:repeating-conic-gradient(#10161e 0% 25%,#151d27 0% 50%) 0 0/18px 18px}
+#vecSvg{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#vecSvg.grabbing{cursor:grabbing}
+
+/* ── Консоль диагностики ───────────────────────────────── */
+#console{border-top:1px solid var(--line2);background:#0a0d12;display:flex;flex-direction:column;height:210px}
+#console.collapsed{height:35px}
+#console.collapsed #consoleBody{display:none}
+#consoleHead{
+  height:34px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;
+  border-bottom:1px solid #161e28;background:var(--panel2);
+}
+.con-title{font:700 10px var(--mono);letter-spacing:1.8px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-count{font:700 10px var(--mono);padding:3px 7px;border-radius:4px;border:1px solid var(--line2);color:var(--dim2);flex:none}
+#errChip.on{color:var(--err);border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)}
+#warnChip.on{color:var(--warn);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
+.con-actions{margin-left:auto;display:flex;gap:6px;flex:none}
+#consoleBody{flex:1;overflow-y:auto;padding:8px 12px;font:12px/1.75 var(--mono)}
+.ln{display:flex;gap:10px;align-items:baseline}
+.lt{color:var(--dim2);flex:none}
+.lc{flex:none;min-width:170px;font-weight:700}
+.lm{color:#b9c6d4;word-break:break-word}
+.l-sys .lc{color:#8aa0b8}
+.l-step .lc{color:#60a5fa}
+.l-ok .lc{color:var(--ok)}
+.l-ok .lm{color:#c9efe0}
+.l-warn .lc{color:var(--warn)}
+.l-warn .lm{color:#efe3c0}
+.l-err .lc{color:var(--err)}
+.l-err .lm{color:#f3c7c7}
+
+@media (max-width:1180px){ #main{grid-template-columns:284px minmax(0,1fr)} }
+@media (max-width:940px){
+  #main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+  #settings{max-height:38vh;border-right:none;border-bottom:1px solid var(--line2)}
+}
+@media (max-width:700px){ #workspace{grid-template-columns:1fr;grid-template-rows:1fr 1fr} }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <small>GMS-0047 / HIGH-DETAIL VECTOR ENGINE</small>
+    <h1>Конвертер растровой в векторную графику</h1>
+  </div>
+  <div class="head-actions">
+    <button id="bLoad" class="btn btn-acc" title="PNG / JPG / WebP · также drag&amp;drop и Ctrl+V">Загрузить изображение</button>
+    <button id="bSample" class="btn" title="Сгенерировать многослойный силуэт персонажа с мелкими деталями">Тестовый образец</button>
+    <span id="status" class="status">ИНИЦИАЛИЗАЦИЯ</span>
+  </div>
+</header>
+
+<main id="main">
+  <aside id="settings">
+    <div class="group">
+      <div class="g-title">Источник и разрешение</div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Рабочее разрешение</span></div>
+        <select id="resSel" title="Максимальная длина стороны рабочего растра">
+          <option value="512">512 px</option>
+          <option value="1024" selected>1024 px</option>
+          <option value="1600">1600 px</option>
+          <option value="full">Оригинал 1:1</option>
+        </select>
+      </div>
+      <div class="footnote">Кроп (ROI) — кнопка на панели «ИСХОДНИК». Колесо мыши — зум, перетаскивание — панорама в обоих окнах.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><b>Слой А</b> — цветовые области</div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Количество цветов (K-Means)</span><span class="val" id="vK">16</span></div>
+        <input type="range" id="rK" min="2" max="32" step="1" value="16">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Подавление шума (Blur)</span><span class="val" id="vBlur">1 px</span></div>
+        <input type="range" id="rBlur" min="0" max="4" step="1" value="1">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Фильтр мелких пятен (мин. площадь)</span><span class="val" id="vArea">4 px²</span></div>
+        <input type="range" id="rArea" min="1" max="300" step="1" value="4">
+      </div>
+      <label class="switch"><input type="checkbox" id="cSub" checked><span class="tr"></span>Субпиксельная трассировка (Marching Squares + lerp)</label>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><i>Слой Б</i> — детали и швы</div>
+      <label class="switch"><input type="checkbox" id="cEdges" checked><span class="tr"></span>Извлекать тонкие линии и швы (Sobel / DoG)</label>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Чувствительность деталей</span><span class="val" id="vSens">50 %</span></div>
+        <input type="range" id="rSens" min="0" max="100" step="1" value="50">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Векторизация кривых</div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Упрощение контура (RDP Epsilon)</span><span class="val" id="vEps">1.8</span></div>
+        <input type="range" id="rEps" min="0.5" max="8" step="0.1" value="1.8">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Угол сохранения (Corner °)</span><span class="val" id="vCorner">60°</span></div>
+        <input type="range" id="rCorner" min="10" max="150" step="1" value="60">
+      </div>
+      <div class="footnote">Изгиб ≥ порога → чёткая вершина. Плавные участки → кубические кривые Безье (C).</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Отображение</div>
+      <label class="switch"><input type="checkbox" id="cBg" checked><span class="tr"></span>Автоматически удалять фон</label>
+      <label class="switch"><input type="checkbox" id="cWire"><span class="tr"></span>Режим векторного каркаса</label>
+      <label class="switch"><input type="checkbox" id="cEdgeOnly"><span class="tr"></span>Показывать только контуры деталей (Edge Layer)</label>
+      <label class="switch"><input type="checkbox" id="cSil" checked><span class="tr"></span>Выделить внешний силуэт</label>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Палитра слоёв (K-Means)</div>
+      <div id="palette"><span class="footnote">ожидание данных…</span></div>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Экспорт результата</div>
+      <div class="export-row">
+        <button id="bSvg" class="btn btn-acc" disabled>Скачать .SVG</button>
+        <button id="bJson" class="btn" disabled>Скачать .JSON</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="footnote">
+        КОНВЕЙЕР: BLUR → K-MEANS(k-means++) → SOBEL/DoG(NMS+hysteresis) →<br>
+        MARCHING SQUARES(субпиксель) / MARCHING EDGES →<br>
+        CURVATURE-RDP → CORNER FLAGS → CUBIC BEZIER<br>
+        ВЫХОД: Vector Scene JSON (colorLayers + detailStrokes)
+      </div>
+    </div>
+  </aside>
+
+  <section id="workspace">
+    <div class="pane">
+      <div class="pane-head">
+        <span class="pane-title">ИСХОДНИК (РАСТР)</span>
+        <span class="pane-stats" id="srcRes">—</span>
+        <span class="zoombar">
+          <button id="bCrop" class="btn btn-sm" title="Выделить область интереса прямоугольником">Кроп (ROI)</button>
+          <button id="bRoiClear" class="btn btn-sm" title="Вернуть полный кадр" hidden>Весь кадр</button>
+          <button id="bSrcFit" class="btn btn-sm" title="Вписать (двойной клик по холсту)">⟲</button>
+        </span>
+      </div>
+      <div class="pane-body" id="srcBody">
+        <canvas id="srcCanvas" width="1" height="1"></canvas>
+        <div id="roiOverlay"></div>
+        <span class="drop-hint">PNG · JPG · WEBP · DRAG&amp;DROP · CTRL+V · WHEEL=ZOOM</span>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="pane-head">
+        <span class="pane-title">РЕЗУЛЬТАТ (ВЕКТОР)</span>
+        <span class="pane-stats" id="vecStats">0 контуров · 0 узлов · 0 швов</span>
+        <span class="zoombar">
+          <button id="bZoomOut" class="btn btn-sm" title="Отдалить">−</button>
+          <button id="bZoomIn" class="btn btn-sm" title="Приблизить">+</button>
+          <button id="bZoomReset" class="btn btn-sm" title="Вписать (двойной клик по холсту)">⟲</button>
+        </span>
+      </div>
+      <div class="pane-body" id="vecBody">
+        <svg id="vecSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="console">
+  <div id="consoleHead">
+    <span class="con-title">КОНСОЛЬ ДИАГНОСТИКИ И КОДОВ ОШИБОК</span>
+    <span id="errChip" class="chip-count">0 ERR</span>
+    <span id="warnChip" class="chip-count">0 WARN</span>
+    <span class="con-actions">
+      <button id="bCopy" class="btn btn-sm">Копировать лог</button>
+      <button id="bClear" class="btn btn-sm">Очистить</button>
+      <button id="bCollapse" class="btn btn-sm" title="Свернуть / развернуть консоль">▾</button>
+    </span>
+  </div>
+  <div id="consoleBody"></div>
+</footer>
+
+<input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" hidden>
+
+<script>
+(function () {
+'use strict';
+
+/* ═══════════════ КОНСТАНТЫ И DOM ═══════════════ */
+const VERSION   = '2.0.0';
+const HARD_MAX  = 4096;   // предохранитель для режима «Оригинал 1:1» на гигантских кадрах
+const NODE_CAP  = 3000;   // лимит опорных узлов на контур
+const MARK_CAP  = 2500;   // лимит circle-маркеров каркаса
+const CANCEL    = { cancelled: true };
+const $ = id => document.getElementById(id);
+
+const fileInput = $('fileInput'), bLoad = $('bLoad'), bSample = $('bSample'), statusEl = $('status');
+const resSel = $('resSel');
+const rK = $('rK'), vK = $('vK'), rBlur = $('rBlur'), vBlur = $('vBlur');
+const rArea = $('rArea'), vArea = $('vArea'), cSub = $('cSub');
+const cEdges = $('cEdges'), rSens = $('rSens'), vSens = $('vSens');
+const rEps = $('rEps'), vEps = $('vEps'), rCorner = $('rCorner'), vCorner = $('vCorner');
+const cBg = $('cBg'), cWire = $('cWire'), cEdgeOnly = $('cEdgeOnly'), cSil = $('cSil');
+const paletteEl = $('palette'), bSvg = $('bSvg'), bJson = $('bJson');
+const srcBody = $('srcBody'), srcCanvas = $('srcCanvas'), srcRes = $('srcRes'), roiOverlay = $('roiOverlay');
+const bCrop = $('bCrop'), bRoiClear = $('bRoiClear'), bSrcFit = $('bSrcFit');
+const vecSvg = $('vecSvg'), vecStats = $('vecStats');
+const bZoomIn = $('bZoomIn'), bZoomOut = $('bZoomOut'), bZoomReset = $('bZoomReset');
+const consoleEl = $('console'), consoleBody = $('consoleBody');
+const bCopy = $('bCopy'), bClear = $('bClear'), bCollapse = $('bCollapse');
+const errChip = $('errChip'), warnChip = $('warnChip');
+
+/* ═══════════════ КОНСОЛЬ ДИАГНОСТИКИ ═══════════════ */
+const LOGBUF = [];
+let errCount = 0, warnCount = 0;
+
+function stamp() {
+  const d = new Date();
+  return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+}
+function log(code, msg) {
+  const time = stamp();
+  LOGBUF.push('[' + time + '] [' + code + '] ' + msg);
+  if (LOGBUF.length > 2000) LOGBUF.shift();
+  const cls = code.startsWith('ERR') ? 'l-err' : code.startsWith('WARN') ? 'l-warn'
+            : code.startsWith('OK') ? 'l-ok' : code.startsWith('STEP') ? 'l-step' : 'l-sys';
+  const ln = document.createElement('div'); ln.className = 'ln ' + cls;
+  const t = document.createElement('span'); t.className = 'lt'; t.textContent = time;
+  const c = document.createElement('span'); c.className = 'lc'; c.textContent = '[' + code + ']';
+  const m = document.createElement('span'); m.className = 'lm'; m.textContent = msg;
+  ln.append(t, c, m);
+  consoleBody.appendChild(ln);
+  while (consoleBody.children.length > 800) consoleBody.removeChild(consoleBody.firstChild);
+  consoleBody.scrollTop = consoleBody.scrollHeight;
+  if (code.startsWith('ERR'))  { errCount++;  errChip.textContent  = errCount + ' ERR';   errChip.classList.add('on'); }
+  if (code.startsWith('WARN')) { warnCount++; warnChip.textContent = warnCount + ' WARN'; warnChip.classList.add('on'); }
+}
+function setStatus(s) {
+  statusEl.className = 'status ' + s;
+  statusEl.textContent = s === 'ok' ? 'ГОТОВ' : s === 'busy' ? 'РАСЧЁТ…' : 'ОШИБКА';
+}
+
+window.onerror = function (msg, src, line, col) {
+  log('ERR-RUNTIME', msg + ' @ ' + (src || 'inline') + ':' + line + ':' + col);
+  setStatus('err');
+  return false;
+};
+window.addEventListener('unhandledrejection', ev => {
+  log('ERR-PROMISE', String((ev.reason && ev.reason.message) || ev.reason));
+  setStatus('err');
+});
+if (window.__earlyErr && window.__earlyErr.length) {
+  window.__earlyErr.forEach(m => log('ERR-RUNTIME', m));
+  window.__earlyErr = [];
+}
+
+async function copyLog() {
+  const txt = LOGBUF.join('\n');
+  try {
+    await navigator.clipboard.writeText(txt);
+    log('SYS-LOG', 'лог скопирован в буфер обмена (' + LOGBUF.length + ' строк)');
+  } catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      log('SYS-LOG', 'лог скопирован (fallback execCommand, ' + LOGBUF.length + ' строк)');
+    } catch (e2) { log('ERR-LOG', 'не удалось скопировать лог: ' + e2.message); }
+  }
+}
+function clearLog() {
+  LOGBUF.length = 0; consoleBody.innerHTML = '';
+  errCount = 0; warnCount = 0;
+  errChip.textContent = '0 ERR'; errChip.classList.remove('on');
+  warnChip.textContent = '0 WARN'; warnChip.classList.remove('on');
+  log('SYS-LOG', 'консоль очищена');
+}
+
+/* ═══════════════ УТИЛИТЫ ═══════════════ */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const fmt = v => { const r = Math.round(v * 100) / 100; return Object.is(r, -0) ? 0 : r; };
+const rgbHex = (r, g, b) => '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+const ru = n => n.toLocaleString('ru-RU');
+const clampN = (v, a, b) => v < a ? a : v > b ? b : v;
+const now = () => performance.now();
+
+/* ═══════════════ ГЕОМЕТРИЯ: ПЛОЩАДЬ / RDP / УГЛЫ / БЕЗЬЕ ═══════════════ */
+/* Shoelace: внешние контуры > 0 (CW в экранных координатах), дыры < 0. */
+function polyArea(p) {
+  let s = 0;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) s += p[j].x * p[i].y - p[i].x * p[j].y;
+  return s / 2;
+}
+function dedupe(pts, closed) {
+  const out = [];
+  for (const p of pts) {
+    const q = out[out.length - 1];
+    if (!q || Math.abs(p.x - q.x) > 1e-6 || Math.abs(p.y - q.y) > 1e-6) out.push(p);
+  }
+  if (closed && out.length > 1) {
+    const a = out[0], b = out[out.length - 1];
+    if (Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6) out.pop();
+  }
+  return out;
+}
+/* Итеративный Рамер — Дуглас — Пекер (без переполнения стека) */
+function rdp(points, eps) {
+  const n = points.length;
+  if (n < 3 || eps <= 0) return points.slice();
+  const keep = new Uint8Array(n); keep[0] = 1; keep[n - 1] = 1;
+  const stack = [[0, n - 1]];
+  while (stack.length) {
+    const seg = stack.pop(), a = seg[0], b = seg[1];
+    if (b - a < 2) continue;
+    const ax = points[a].x, ay = points[a].y;
+    const dx = points[b].x - ax, dy = points[b].y - ay;
+    const len2 = dx * dx + dy * dy;
+    let maxD = -1, idx = -1;
+    for (let i = a + 1; i < b; i++) {
+      const px = points[i].x - ax, py = points[i].y - ay;
+      let d;
+      if (len2 === 0) d = Math.sqrt(px * px + py * py);
+      else {
+        let t = (px * dx + py * dy) / len2;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const qx = px - t * dx, qy = py - t * dy;
+        d = Math.sqrt(qx * qx + qy * qy);
+      }
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD > eps && idx > 0) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(points[i]);
+  return out;
+}
+/* RDP замкнутого полигона без угловых якорей: разрез в самой дальней точке */
+function simplifyClosed(pts, eps) {
+  if (pts.length < 4 || eps <= 0) return pts;
+  let far = 0, fd = -1;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[0].x, dy = pts[i].y - pts[0].y;
+    const d = dx * dx + dy * dy;
+    if (d > fd) { fd = d; far = i; }
+  }
+  if (far === 0) return pts;
+  const sa = rdp(pts.slice(0, far + 1), eps);
+  const sb = rdp(pts.slice(far).concat([pts[0]]), eps);
+  const res = sa.slice(0, -1).concat(sb.slice(0, -1));
+  return res.length >= 3 ? res : pts;
+}
+/* Curvature-Aware: поиск острых вершин на сырой ломаной по окну ±win.
+   Окно гасит пиксельную «лесенку» (net-направление ступеней не меняется),
+   но фиксирует реальные углы брони/каски. Найденные вершины становятся
+   якорями RDP и не могут быть срезаны большим epsilon. */
+function rawCorners(P, thrDeg, win, closed) {
+  const n = P.length, out = [];
+  if (n < 3) { for (let i = 0; i < n; i++) out.push(i); return out; }
+  const cosThr = Math.cos(thrDeg * Math.PI / 180);
+  for (let i = 0; i < n; i++) {
+    let ia = i - win, ib = i + win;
+    if (closed) { ia = ((ia % n) + n) % n; ib = ib % n; }
+    else { ia = Math.max(0, ia); ib = Math.min(n - 1, ib); }
+    if (ia === i || ib === i) { out.push(i); continue; }
+    const ax = P[i].x - P[ia].x, ay = P[i].y - P[ia].y;
+    const bx = P[ib].x - P[i].x, by = P[ib].y - P[i].y;
+    const la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+    if (la < 1e-9 || lb < 1e-9) continue;
+    if ((ax * bx + ay * by) / (la * lb) < cosThr) out.push(i);
+  }
+  if (!closed) {
+    if (out[0] !== 0) out.unshift(0);
+    if (out[out.length - 1] !== n - 1) out.push(n - 1);
+  }
+  return out;
+}
+function simplifyAdaptive(raw, eps, thrDeg, closed) {
+  const P = dedupe(raw, closed);
+  const n = P.length;
+  if (n < (closed ? 3 : 2)) return P;
+  const win = Math.max(2, Math.round(eps * 1.2));
+  const corners = rawCorners(P, thrDeg, win, closed);
+  if (closed) {
+    if (corners.length === 0) return simplifyClosed(P, eps);
+    const out = [];
+    for (let k = 0; k < corners.length; k++) {
+      const a = corners[k], b = corners[(k + 1) % corners.length];
+      let chain;
+      if (corners.length === 1) chain = P.slice(a).concat(P.slice(0, a + 1));
+      else if (k === corners.length - 1) chain = P.slice(a).concat(P.slice(0, b + 1));
+      else chain = P.slice(a, b + 1);
+      const s = rdp(chain, eps);
+      for (let i = 0; i < s.length - 1; i++) out.push(s[i]);
+    }
+    return out.length >= 3 ? out : P;
+  }
+  const out = [];
+  for (let k = 0; k < corners.length - 1; k++) {
+    const s = rdp(P.slice(corners[k], corners[k + 1] + 1), eps);
+    for (let i = 0; i < s.length - 1; i++) out.push(s[i]);
+  }
+  out.push(P[n - 1]);
+  return out.length >= 2 ? out : P;
+}
+/* Угловые флаги на упрощённой ломаной: изгиб ≥ порога → острая вершина */
+function cornerFlags(P, thrDeg, closed) {
+  const n = P.length, f = new Uint8Array(n);
+  const cosThr = Math.cos(thrDeg * Math.PI / 180);
+  for (let i = 0; i < n; i++) {
+    if (!closed && (i === 0 || i === n - 1)) { f[i] = 1; continue; }
+    const a = P[(i - 1 + n) % n], b = P[i], c = P[(i + 1) % n];
+    const ax = b.x - a.x, ay = b.y - a.y, bx = c.x - b.x, by = c.y - b.y;
+    const la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+    if (la < 1e-9 || lb < 1e-9) { f[i] = 1; continue; }
+    if ((ax * bx + ay * by) / (la * lb) < cosThr) f[i] = 1;
+  }
+  return f;
+}
+/* Адаптивные кубические Безье: Catmull-Rom-касательные на плавных участках,
+   коллинеарные рёбрам ручки на острых вершинах (угол не «замыливается»).
+   Оба конца острые → прямая L. Ручки ограничены 45% длины ребра. */
+function bezierPath(P, flags, closed) {
+  const n = P.length;
+  if (n < 2) return '';
+  if (n === 2) return 'M' + fmt(P[0].x) + ' ' + fmt(P[0].y) + 'L' + fmt(P[1].x) + ' ' + fmt(P[1].y) + (closed ? 'Z' : '');
+  let d = 'M' + fmt(P[0].x) + ' ' + fmt(P[0].y);
+  const m = closed ? n : n - 1;
+  for (let i = 0; i < m; i++) {
+    const j = (i + 1) % n, p0 = P[i],

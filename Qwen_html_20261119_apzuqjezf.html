@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMS-0047 · Окно 3 — 3D-верстак сборки и скульптинга</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%2322d3ee' stroke-width='2'/%3E%3Cpath d='M5 8h6M8 5v6' stroke='%23fbbf24' stroke-width='1.6'/%3E%3C/svg%3E">
+<script>
+window.__earlyErrors = [];
+window.__booted = false;
+window.onerror = function (m, s, l, c) {
+  window.__earlyErrors.push({ code: 'ERR-RUNTIME', msg: m + ' @ ' + (s || 'inline') + ':' + l + ':' + c });
+  return false;
+};
+setTimeout(function () {
+  if (!window.__booted) {
+    var msg = 'Three.js не инициализировался за 12 с — проверьте доступ к unpkg.com';
+    if (window.__log) window.__log('ERR-CDN', msg);
+    else window.__earlyErrors.push({ code: 'ERR-CDN', msg: msg });
+  }
+}, 12000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+:root{
+  --bg:#0a0e13;--panel:#10151c;--panel2:#0d1218;--line:#1e2833;--line2:#26313f;
+  --txt:#d7e0ea;--dim:#7c8b9d;--dim2:#5b6b7d;
+  --acc:#22d3ee;--acc2:#fbbf24;--ok:#34d399;--warn:#fbbf24;--err:#f87171;
+  --mono:ui-monospace,'Cascadia Mono','JetBrains Mono',Consolas,monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:#0c1117}
+::-webkit-scrollbar-thumb{background:#243040;border-radius:5px;border:2px solid #0c1117}
+*{scrollbar-width:thin;scrollbar-color:#243040 #0c1117}
+.app-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line2);background:linear-gradient(180deg,#121924,#0d1218)}
+.brand small{display:block;font:700 10px var(--mono);letter-spacing:2px;color:var(--acc2);margin-bottom:3px}
+.brand h1{font:600 15px/1.2 var(--sans);color:#eef4fa}
+.head-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.status{font:700 10px var(--mono);letter-spacing:1.2px;padding:7px 11px;border-radius:6px;border:1px solid var(--line2);color:var(--dim)}
+.status.ok{color:var(--ok);border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.08)}
+.status.busy{color:var(--warn);border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.08)}
+.status.err{color:var(--err);border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.1)}
+.btn{font:600 11px/1 var(--mono);letter-spacing:.7px;text-transform:uppercase;color:var(--txt);background:#141b24;border:1px solid var(--line2);border-radius:7px;padding:9px 12px;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--acc);color:#fff;box-shadow:0 0 12px rgba(34,211,238,.25)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.btn-acc{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.55);color:var(--acc)}
+.btn-go{background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.6);color:var(--ok)}
+.btn-sm{padding:5px 8px;font-size:10px;border-radius:5px}
+.btn.active{border-color:var(--acc2);color:var(--acc2);background:rgba(251,191,36,.1)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.btn-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.btn-wide{width:100%}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:#1e2833;outline:none;margin:10px 0 2px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:4px;background:#e8f6fb;border:2px solid var(--acc);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:4px;background:#e8f6fb;border:2px solid var(--acc);cursor:pointer}
+select{width:100%;background:#0f151d;color:var(--txt);border:1px solid var(--line2);border-radius:6px;padding:7px 9px;font:12px var(--mono);outline:none}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0;font-size:12px;user-select:none}
+.switch input{display:none}
+.switch .tr{width:34px;height:18px;border-radius:10px;background:#1e2833;border:1px solid #2a3644;position:relative;flex:none;transition:.15s}
+.switch .tr::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#7c8b9d;transition:.15s}
+.switch input:checked+.tr{background:rgba(34,211,238,.25);border-color:var(--acc)}
+.switch input:checked+.tr::after{left:18px;background:var(--acc)}
+#main{display:grid;grid-template-columns:318px minmax(0,1fr);min-height:0}
+#sidebar{background:var(--panel);border-right:1px solid var(--line2);padding:14px 16px;overflow-y:auto;min-height:0}
+.group{margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed #1c2632}
+.group:last-child{border-bottom:none}
+.g-title{font:700 10px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.g-title b{color:var(--acc)}.g-title i{color:var(--acc2);font-style:normal}
+.ctl{margin-bottom:12px}.ctl:last-child{margin-bottom:0}
+.ctl-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl-name{font-size:12px}
+.val{font:700 11px var(--mono);color:var(--acc2);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:4px;padding:2px 7px;white-space:nowrap}
+.footnote{font:10px/1.6 var(--mono);color:var(--dim2)}
+.info{font:11px/1.7 var(--mono);color:#9fb6cc;margin-bottom:8px}
+.info b{color:var(--acc)}
+.slot{border:1px solid var(--line2);border-radius:7px;padding:7px 9px;margin-bottom:7px;background:#0f151d}
+.slot.loaded{border-color:rgba(52,211,153,.4)}
+.slot-head{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.slot-name{font:700 10px var(--mono);letter-spacing:1px;color:var(--txt)}
+.slot-state{margin-left:auto;font:10px var(--mono);color:var(--dim2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.loaded .slot-state{color:var(--ok)}
+.slot-actions{display:flex;gap:5px}
+.slot-actions .btn{flex:1}
+#centerPane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel2)}
+.pane-head{flex:none;display:flex;align-items:center;gap:7px;height:42px;padding:0 12px;border-bottom:1px solid var(--line);background:#111823;overflow-x:auto}
+.pane-title{font:700 10px var(--mono);letter-spacing:1.6px;color:var(--dim);white-space:nowrap}
+.spacer{flex:1}
+.bar{display:flex;gap:5px;flex:none}
+#wrap3d{flex:1;position:relative;min-height:0;overflow:hidden;background:#0d1420}
+#wrap3d canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;outline:none}
+.hud{position:absolute;left:12px;bottom:10px;pointer-events:none;z-index:5;font:11px/1.7 var(--mono);color:#9fb6cc;text-shadow:0 1px 3px #000c}
+.hud b{color:var(--acc)}
+.hud-top{position:absolute;left:12px;top:10px;bottom:auto}
+.hint{position:absolute;right:12px;top:10px;pointer-events:none;z-index:5;font:10px/1.7 var(--mono);color:var(--dim2);text-align:right;text-shadow:0 1px 3px #000c}
+.boot-error{position:absolute;inset:0;display:grid;place-items:center;z-index:9;color:var(--err);font:700 12px var(--mono);text-align:center;padding:24px;line-height:2}
+#console{border-top:1px solid var(--line2);background:#0a0d12;display:flex;flex-direction:column;height:185px}
+#console.collapsed{height:35px}
+#console.collapsed #consoleBody{display:none}
+#consoleHead{height:34px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid #161e28;background:var(--panel2)}
+.con-title{font:700 10px var(--mono);letter-spacing:1.8px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-count{font:700 10px var(--mono);padding:3px 7px;border-radius:4px;border:1px solid var(--line2);color:var(--dim2);flex:none}
+#errChip.on{color:var(--err);border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)}
+#warnChip.on{color:var(--warn);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
+.con-actions{margin-left:auto;display:flex;gap:6px;flex:none}
+#consoleBody{flex:1;overflow-y:auto;padding:8px 12px;font:12px/1.75 var(--mono)}
+.ln{display:flex;gap:10px;align-items:baseline}
+.lt{color:var(--dim2);flex:none}.lc{flex:none;min-width:140px;font-weight:700}.lm{color:#b9c6d4;word-break:break-word}
+.l-sys .lc{color:#8aa0b8}.l-data .lc{color:#c084fc}.l-mesh .lc{color:#2dd4bf}.l-slide .lc{color:#60a5fa}
+.l-sculpt .lc{color:#f0a63c}.l-ok .lc{color:var(--ok)}.l-ok .lm{color:#c9efe0}
+.l-warn .lc{color:var(--warn)}.l-warn .lm{color:#efe3c0}.l-err .lc{color:var(--err)}.l-err .lm{color:#f3c7c7}
+@media (max-width:980px){#main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}#sidebar{max-height:36vh;border-right:none;border-bottom:1px solid var(--line2)}}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <small>GMS-0047 / SCULPT WORKBENCH · ОКНО 3</small>
+    <h1>3D-верстак сборки и скульптинга по векторным слайдам</h1>
+  </div>
+  <div class="head-right">
+    <span id="status" class="status">ЗАГРУЗКА</span>
+    <button id="bSaveProj" class="btn btn-sm">Сохранить проект</button>
+    <button id="bLoadProj" class="btn btn-sm">Загрузить проект</button>
+    <button id="bExportGLB" class="btn btn-go" disabled>Скачать модель (.GLB для Unity)</button>
+  </div>
+</header>
+
+<main id="main">
+  <aside id="sidebar">
+    <div class="group">
+      <div class="g-title"><b>01</b> · Скелет и болванка</div>
+      <div class="btn-row">
+        <button id="bLoadSkel" class="btn btn-acc">skeleton_step1.json</button>
+        <button id="bPickLocal" class="btn">Из localStorage</button>
+      </div>
+      <button id="bDemo" class="btn btn-sm btn-wide" style="margin-bottom:8px">Демо-скелет (A-Pose)</button>
+      <div class="info" id="skelInfo">скелет не загружен</div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Плотность сетки (Marching Cubes)</span></div>
+        <select id="selRes">
+          <option value="64">64³ — быстро</option>
+          <option value="96" selected>96³ — баланс</option>
+          <option value="128">128³ — детально</option>
+        </select>
+      </div>
+      <button id="bRebuild" class="btn btn-sm btn-wide">Пересобрать болванку (SDF)</button>
+      <div class="info" id="meshInfo" style="margin-top:8px">меш не построен</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><b>02</b> · Векторные слайды</div>
+      <div id="slideSlots"></div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Прозрачность слайдов</span><span class="val" id="vSlideOp">70 %</span></div>
+        <input type="range" id="rSlideOp" min="0" max="100" step="1" value="70">
+      </div>
+      <label class="switch"><input type="checkbox" id="cXray"><span class="tr"></span>X-Ray: контур поверх 3D</label>
+      <button id="bAutoPlace" class="btn btn-sm btn-wide">Расставить слайды по осям</button>
+      <div class="footnote" style="margin-top:6px">Режим «Слайды»: клик по слайду → стрелки TransformControls. G/R/S —.move/rotate/scale.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><i>03</i> · Скульптинг</div>
+      <div class="btn-row3">
+        <button class="btn btn-sm brush-btn active" data-brush="inflate" title="Q — надуть; Ctrl+ЛКМ — вдавить">Надуть</button>
+        <button class="btn btn-sm brush-btn" data-brush="grab" title="W — тянуть за курсор">Тянуть</button>
+        <button class="btn btn-sm brush-btn" data-brush="smooth" title="E — сгладить">Сгладить</button>
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Радиус кисти (м)</span><span class="val" id="vRadius">0.12</span></div>
+        <input type="range" id="rRadius" min="0.02" max="0.5" step="0.01" value="0.12">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span class="ctl-name">Сила</span><span class="val" id="vStrength">50 %</span></div>
+        <input type="range" id="rStrength" min="0" max="100" step="1" value="50">
+      </div>
+      <label class="switch"><input type="checkbox" id="cMirror" checked><span class="tr"></span>Зеркало по X</label>
+      <div class="btn-row">
+        <button id="bNormals" class="btn btn-sm">Пересчитать нормали</button>
+        <button id="bResetSculpt" class="btn btn-sm">Сбросить лепку</button>
+      </div>
+      <div class="footnote">Ctrl+Z / Ctrl+Shift+Z — история (30 шагов). [ ] — радиус.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title"><i>04</i> · Цвет и экспорт</div>
+      <div class="btn-row">
+        <button id="bBake" class="btn btn-sm btn-acc">Запечь цвет</button>
+        <button id="bClay" class="btn btn-sm">Серая глина</button>
+      </div>
+      <div class="footnote">Vertex Colors проецируются со слайдов по нормалям. GLB в метрах, пол Y=0, центр X/Z=0.</div>
+    </div>
+  </aside>
+
+  <section id="centerPane">
+    <div class="pane-head">
+      <span class="pane-title">3D-ВЕРСТАК</span>
+      <span class="bar">
+        <button id="bMode" class="btn btn-sm active" title="Tab — переключить режим">Режим: Слайды</button>
+        <button class="btn btn-sm tmode-btn active" data-tmode="translate" title="G">⇄</button>
+        <button class="btn btn-sm tmode-btn" data-tmode="rotate" title="R">↻</button>
+        <button class="btn btn-sm tmode-btn" data-tmode="scale" title="S">⤢</button>
+      </span>
+      <span class="spacer"></span>
+      <span class="bar">
+        <button class="btn btn-sm view-btn" data-view="front" title="1">Front</button>
+        <button class="btn btn-sm view-btn" data-view="back" title="Ctrl+1">Back</button>
+        <button class="btn btn-sm view-btn" data-view="left" title="Ctrl+3">Left</button>
+        <button class="btn btn-sm view-btn" data-view="right" title="3">Right</button>
+        <button class="btn btn-sm view-btn active" data-view="3d">3D</button>
+        <button id="bOrtho" class="btn btn-sm" title="5 — орто/перспектива">Persp</button>
+      </span>
+    </div>
+    <div id="wrap3d">
+      <div class="hud hud-top" id="hud3d">инициализация…</div>
+      <div class="hint" id="hint3d">ЛКМ — орбита · ПКМ — панорама · колесо — зум</div>
+      <div class="hud">пол Y=0 · Unity: 1 unit = 1 m</div>
+    </div>
+  </section>
+</main>
+
+<footer id="console">
+  <div id="consoleHead">
+    <span class="con-title">КОНСОЛЬ ДИАГНОСТИКИ И КОДОВ ОШИБОК</span>
+    <span id="errChip" class="chip-count">0 ERR</span>
+    <span id="warnChip" class="chip-count">0 WARN</span>
+    <span class="con-actions">
+      <button id="bCopy" class="btn btn-sm">Копировать лог</button>
+      <button id="bClearLog" class="btn btn-sm">Очистить</button>
+      <button id="bCollapse" class="btn btn-sm">▾</button>
+    </span>
+  </div>
+  <div id="consoleBody"></div>
+</footer>
+
+<input type="file" id="fileSkel" accept="application/json,.json" hidden>
+<input type="file" id="fileProj" accept="application/json,.json" hidden>
+<input type="file" id="fileSlide" hidden>
+
+<script type="module">
+'use strict';
+const VERSION = '3.0.0';
+const LS_KEY = 'gms0047_step1_v2';
+const $ = id => document.getElementById(id);
+
+/* ═══════════ КОНСОЛЬ ═══════════ */
+const consoleBody = $('consoleBody'), consoleEl = $('console');
+const errChip = $('errChip'), warnChip = $('warnChip'), statusEl = $('status');
+const LOGBUF = []; let errCount = 0, warnCount = 0;
+function stamp(){const d=new Date();return d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0');}
+function log(code,msg){
+  const t=stamp();LOGBUF.push('['+t+'] ['+code+'] '+msg);if(LOGBUF.length>2000)LOGBUF.shift();
+  const cls=code.startsWith('ERR')?'l-err':code.startsWith('WARN')?'l-warn':code.startsWith('OK')?'l-ok':
+    code.startsWith('DATA')?'l-data':code.startsWith('MESH')?'l-mesh':code.startsWith('SLIDE')?'l-slide':
+    code.startsWith('SCULPT')||code.startsWith('BAKE')?'l-sculpt':'l-sys';
+  const ln=document.createElement('div');ln.className='ln '+cls;
+  const a=document.createElement('span');a.className='lt';a.textContent=t;
+  const b=document.createElement('span');b.className='lc';b.textContent='['+code+']';
+  const c=document.createElement('span');c.className='lm';c.textContent=msg;
+  ln.append(a,b,c);consoleBody.appendChild(ln);
+  while(consoleBody.children.length>800)consoleBody.removeChild(consoleBody.firstChild);
+  consoleBody.scrollTop=consoleBody.scrollHeight;
+  if(code.startsWith('ERR')){errCount++;errChip.textContent=errCount+' ERR';errChip.classList.add('on');}
+  if(code.startsWith('WARN')){warnCount++;warnChip.textContent=warnCount+' WARN';warnChip.classList.add('on');}
+}
+window.__log=log;
+function setStatus(s){statusEl.className='status '+s;statusEl.textContent=s==='ok'?'ГОТОВ':s==='busy'?'РАСЧЁТ…':'ОШИБКА';}
+window.onerror=function(m,s,l,c){log('ERR-RUNTIME',m+' @ '+(s||'inline')+':'+l+':'+c);setStatus('err');return false;};
+window.addEventListener('unhandledrejection',e=>{log('ERR-PROMISE',String((e.reason&&e.reason.message)||e.reason));setStatus('err');});
+window.addEventListener('error',e=>{const t=e.target;if(t&&t!==window&&(t.src||t.href))log('ERR-RES','ресурс: '+(t.src||t.href));},true);
+if(window.__earlyErrors&&window.__earlyErrors.length){window.__earlyErrors.forEach(e=>log(e.code||'ERR-RUNTIME',e.msg||String(e)));window.__earlyErrors=[];}
+async function copyLog(){const txt=LOGBUF.join('\n');
+  try{await navigator.clipboard.writeText(txt);log('SYS-INIT','лог скопирован ('+LOGBUF.length+')');}
+  catch(e){try{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();log('SYS-INIT','лог скопирован (fallback)');}catch(e2){log('ERR-LOG',e2.message);}}}
+function clearLog(){LOGBUF.length=0;consoleBody.innerHTML='';errCount=0;warnCount=0;errChip.textContent='0 ERR';errChip.classList.remove('on');warnChip.textContent='0 WARN';warnChip.classList.remove('on');log('SYS-INIT','консоль очищена');}
+
+/* ═══════════ УТИЛИТЫ ═══════════ */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const r5=v=>Math.round(v*1e5)/1e5;
+function median(a){if(!a.length)return 0;const s=a.slice().sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function f32ToB64(f){const u=new Uint8Array(f.buffer,f.byteOffset,f.byteLength);let s='';const CH=0x8000;for(let i=0;i<u.length;i+=CH)s+=String.fromCharCode.apply(null,u.subarray(i,i+CH));return btoa(s);}
+function b64ToF32(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return new Float32Array(u.buffer);}
+function u32ToB64(f){return f32ToB64(new Float32Array(f.buffer.slice(0)));}
+function b64ToU32(b){const f=b64ToF32(b);return new Uint32Array(f.buffer);}
+const tick=()=>new Promise(r=>setTimeout(r,0));
+
+/* ═══════════ СОСТОЯНИЕ ═══════════ */
+let THREE,OrbitControls,TransformControls,GLTFExporter,MarchingCubes;
+let renderer,scene,perspCam,orthoCam,activeCam,controls,tc,raycaster,pointerNDC;
+let sculptMesh=null,clayMat=null,ring=null;
+let mesh=null; // {positions:Float32Array, indices:Uint32Array, adjacency:[], mirrorMap:Int32Array, count}
+let skeleton=null; // {joints:[{id,name,role,world}], bones:[{a,b,rx,rz}], heightM}
+let skeletonRaw=null;
+let mode='slides', brush='inflate', ortho=false;
+let undoStack=[],undoIndex=-1;const UNDO_MAX=30;
+let stroke=null, hoverHit=null;
+let modelHeight=1.8;
+const slides={};
+const SLIDE_DEFS=[
+  {key:'front',label:'FRONT · Перед',axis:'z',sign:1,rotY:0},
+  {key:'back',label:'BACK · Зад',axis:'z',sign:-1,rotY:Math.PI},
+  {key:'left',label:'LEFT · Лево',axis:'x',sign:1,rotY:Math.PI/2},
+  {key:'right',label:'RIGHT · Право',axis:'x',sign:-1,rotY:-Math.PI/2}
+];
+const wrap3d=$('wrap3d'),hud3d=$('hud3d'),hint3d=$('hint3d');
+
+/* ═══════════ СКЕЛЕТ: ИСТОЧНИКИ ═══════════ */
+const CENTER_ROLES=new Set(['root','spine','chest','neck','head','headtop']);
+function regionOf(cr,pr){
+  switch(cr){case 'spine':return 'pelvis';case 'chest':return 'belly';case 'neck':return 'chest';
+    case 'head':return 'neck';case 'headtop':return 'head';
+    case 'arm':return (pr==='arm'||pr==='hand')?'arm':'shoulder';
+    case 'hand':return 'hand';
+    case 'leg':return (pr==='leg'||pr==='foot')?'shin':'thigh';
+    case 'foot':return 'foot';default:return 'belly';}
+}
+function fallbackRadius(region,P,headLenU,k){
+  switch(region){case 'head':return Math.max(6,headLenU*k*0.45);case 'neck':return 5;
+    case 'shoulder':return P.armsR*1.15;case 'arm':return P.armsR;case 'hand':return P.armsR*0.8;
+    case 'thigh':return P.legsR*1.05;case 'shin':return P.legsR;case 'foot':return P.legsR*0.55;
+    case 'pelvis':return P.torsoR*0.95;case 'belly':return P.torsoR*0.9;case 'chest':return P.torsoR;
+    default:return P.torsoR*0.8;}
+}
+function skeletonFrom2D(joints2D,contours,params){
+  const P={height:params.targetHeightCm||180,chestD:params.chestDepthCm||26,pelvisD:params.pelvisDepthCm||24,
+    bend:params.limbBendCm||4,torsoR:(params.capsuleRadiiCm&&params.capsuleRadiiCm.torso)||15,
+    armsR:(params.capsuleRadiiCm&&params.capsuleRadiiCm.arms)||6,legsR:(params.capsuleRadiiCm&&params.capsuleRadiiCm.legs)||9};
+  const byId={};joints2D.forEach(j=>byId[j.id]=j);
+  const kids=id=>joints2D.filter(j=>j.parent===id);
+  let fc=joints2D.filter(j=>j.role==='foot');
+  if(!fc.length)fc=joints2D.filter(j=>j.role==='leg'&&!kids(j.id).length);
+  if(!fc.length)fc=joints2D.slice();
+  let floorY=0;if(fc.length){let b=fc[0];for(const j of fc)if(j.y<b.y)b=j;floorY=b.y;}
+  let tc2=joints2D.filter(j=>j.role==='headtop');if(!tc2.length)tc2=joints2D.filter(j=>j.role==='head');if(!tc2.length)tc2=joints2D.slice();
+  let topY=floorY;if(tc2.length){let b=tc2[0];for(const j of tc2)if(j.y>b.y)b=j;topY=b.y;}
+  const natural=Math.max(1e-6,topY-floorY);const k=natural>5?P.height/natural:1;
+  const world={};
+  for(const j of joints2D){
+    const par=j.parent?byId[j.parent]:null;let z=0;
+    if(j.role==='arm'&&par&&par.role==='arm')z=-P.bend;
+    else if(j.role==='leg'&&par&&par.role==='leg')z=P.bend;
+    else if(j.role==='foot'&&par&&par.role==='foot')z=10;
+    world[j.id]={x:j.x*k/100,y:(j.y-floorY)*k/100,z:z/100};
+  }
+  const bones=[];
+  const headJ=joints2D.find(j=>j.role==='head'),headT=joints2D.find(j=>j.role==='headtop');
+  const headLenU=(headJ&&headT)?Math.hypot(headT.x-headJ.x,headT.y-headJ.y):14;
+  const votes={};
+  if(contours&&contours.length){
+    for(const ct of contours){if(ct.visible===false)continue;
+      for(const p of ct.points){let bb=null,bd=Infinity;
+        for(const j of joints2D){if(!j.parent||!byId[j.parent])continue;const a=byId[j.parent];
+          const dx=j.x-a.x,dy=j.y-a.y,l2=dx*dx+dy*dy;if(l2<1e-9)continue;
+          let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/l2;if(t<0.05||t>0.95)continue;t=clamp(t,0,1);
+          const d=Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy));if(d<bd){bd=d;bb=j.id;}}
+        if(bb&&bd>0.4&&bd<60)(votes[bb]=votes[bb]||[]).push(bd);}}
+  }
+  for(const j of joints2D){
+    if(!j.parent||!byId[j.parent])continue;
+    const par=byId[j.parent];const region=regionOf(j.role,par.role);
+    let rx;const v=votes[j.id];
+    if(v&&v.length>=4)rx=median(v)*k;else rx=fallbackRadius(region,P,headLenU,k);
+    rx=clamp(rx,1.5,45);
+    let rz=rx;
+    if(region==='chest')rz=P.chestD/2;else if(region==='pelvis')rz=P.pelvisD/2;else if(region==='belly')rz=(P.chestD+P.pelvisD)/4;
+    bones.push({a:world[j.parent],b:world[j.id],rx:rx/100,rz:Math.max(1.5,rz)/100,region});
+  }
+  return {joints:joints2D.map(j=>({id:j.id,name:j.name,role:j.role,world:world[j.id]})),bones,heightM:P.height/100};
+}
+function adoptSkeleton(obj,label){
+  let sk=null;
+  if(obj&&obj.skeleton3D&&Array.isArray(obj.skeleton3D.joints)&&obj.skeleton3D.joints.length){
+    const joints=obj.skeleton3D.joints.map(j=>({id:j.id,name:j.name,role:j.role,world:j.worldPosition}));
+    const byId={};joints.forEach(j=>byId[j.id]=j);
+    const bones=(obj.skeleton3D.bones||[]).filter(b=>byId[b.from]&&byId[b.to]).map(b=>({
+      a:byId[b.from].world,b:byId[b.to].world,
+      rx:(b.capsule?b.capsule.radiusXCm:8)/100,rz:(b.capsule?b.capsule.radiusZCm:8)/100,region:b.region}));
+    sk={joints,bones,heightM:(obj.parameters&&obj.parameters.targetHeightCm||180)/100};
+  } else if(obj&&obj.editor&&Array.isArray(obj.editor.joints)){
+    sk=skeletonFrom2D(obj.editor.joints,obj.editor.contours||[],obj.parameters||{});
+  } else if(obj&&obj.core&&Array.isArray(obj.core.joints)){
+    sk=skeletonFrom2D(obj.core.joints,obj.core.contours||[],obj.params||{});
+  }
+  if(!sk||!sk.joints.length)throw new Error('не распознан формат скелета');
+  skeleton=sk;skeletonRaw=obj;modelHeight=sk.heightM;
+  $('skelInfo').innerHTML='скелет: <b>'+label+'</b><br>узлов: <b>'+sk.joints.length+'</b> · костей: <b>'+sk.bones.length+'</b> · рост: <b>'+Math.round(sk.heightM*100)+' см</b>';
+  log('DATA-LOAD',label+': '+sk.joints.length+' узлов, '+sk.bones.length+' костей, рост '+Math.round(sk.heightM*100)+' см');
+  return sk;
+}
+function demoSkeleton(){
+  const T=[['Pelvis','root',0,96,null],['Spine','spine',0,112,'Pelvis'],['Chest','chest',0,132,'Spine'],
+    ['Neck','neck',0,152,'Chest'],['Head','head',0,166,'Neck'],['HeadTop','headtop',0,180,'Head'],
+    ['Shoulder_L','arm',20,146,'Chest'],['Elbow_L','arm',42,124,'Shoulder_L'],['Wrist_L','hand',61,105,'Elbow_L'],
+    ['Shoulder_R','arm',-20,146,'Chest'],['Elbow_R','arm',-42,124,'Shoulder_R'],['Wrist_R','hand',-61,105,'Elbow_R'],
+    ['Hip_L','leg',10,92,'Pelvis'],['Knee_L','leg',12,50,'Hip_L'],['Ankle_L','foot',13,7,'Knee_L'],['Toe_L','foot',14,2,'Ankle_L'],
+    ['Hip_R','leg',-10,92,'Pelvis'],['Knee_R','leg',-12,50,'Hip_R'],['Ankle_R','foot',-13,7,'Knee_R'],['Toe_R','foot',-14,2,'Ankle_R']];
+  const ids={};const j2=T.map((r,i)=>{const id='d'+i;ids[r[0]]=id;return {id,name:r[0],role:r[1],x:r[2],y:r[3],parent:null};});
+  T.forEach((r,i)=>{j2[i].parent=r[4]?ids[r[4]]:null;});
+  return {editor:{joints:j2,contours:[]},parameters:{targetHeightCm:180}};
+}
+
+/* ═══════════ SDF + MARCHING CUBES → ЕДИНЫЙ МЕШ ═══════════ */
+function sdfCapsule(px,py,pz,a,b,r){
+  const abx=b.x-a.x,aby=b.y-a.y,abz=b.z-a.z;
+  const apx=px-a.x,apy=py-a.y,apz=pz-a.z;
+  const l2=abx*abx+aby*aby+abz*abz;
+  let t=l2>1e-12?(apx*abx+apy*aby+apz*abz)/l2:0;t=clamp(t,0,1);
+  const dx=apx-abx*t,dy=apy-aby*t,dz=apz-abz*t;
+  return Math.sqrt(dx*dx+dy*dy+dz*dz)-r;
+}
+function smin(a,b,k){const h=clamp(0.5+0.5*(b-a)/k,0,1);return b+(a-b)*h-k*h*(1-h);}
+async function buildMesh(res){
+  if(!skeleton){log('WARN-MESH','скелет не загружен');return;}
+  setStatus('busy');
+  const t0=performance.now();
+  const caps=skeleton.bones.map(b=>({a:b.a,b:b.b,r:Math.max(0.02,(b.rx+b.rz)/2)}));
+  if(!caps.length){log('ERR-MESH','нет костей для SDF');setStatus('err');return;}
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
+  for(const c of caps){
+    for(const p of [c.a,c.b]){
+      x0=Math.min(x0,p.x-c.r);x1=Math.max(x1,p.x+c.r);
+      y0=Math.min(y0,p.y-c.r);y1=Math.max(y1,p.y+c.r);
+      z0=Math.min(z0,p.z-c.r);z1=Math.max(z1,p.z+c.r);
+    }
+  }
+  const margin=0.06;
+  x0-=margin;x1+=margin;y0-=margin;y1+=margin;z0-=margin;z1+=margin;
+  const side=Math.max(x1-x0,y1-y0,z1-z0);
+  const cx=(x0+x1)/2,cy=(y0+y1)/2,cz=(z0+z1)/2;
+  const half=side/2;
+  const mc=new MarchingCubes(res,new THREE.MeshBasicMaterial(),false,false,400000);
+  mc.isolation=0;
+  const field=mc.field,size=res,size2=res*res;
+  const K=0.05;
+  for(let z=0;z<size;z++){
+    const wz=cz+((z/(res-1))*2-1)*half;
+    for(let y=0;y<size;y++){
+      const wy=cy+((y/(res-1))*2-1)*half;
+      const yo=size*y,zo=size2*z;
+      for(let x=0;x<size;x++){
+        const wx=cx+((x/(res-1))*2-1)*half;
+        let d=Infinity;
+        for(let i=0;i<caps.length;i++){const c=caps[i];d=smin(d,sdfCapsule(wx,wy,wz,c.a,c.b,c.r),K);}
+        field[zo+yo+x]=-d*100;
+      }
+    }
+    if((z&7)===0)await tick();
+  }
+  mc.update();
+  const srcPos=mc.geometry.attributes.position.array;
+  const vcount=mc.geometry.drawRange.count;
+  if(!vcount){log('ERR-MESH','Marching Cubes не дал поверхности');setStatus('err');return;}
+  /* weld в индексированный меш в мировых координатах */
+  const map=new Map();const verts=[];const idx=[];
+  const key=(x,y,z)=>Math.round(x*1e4)+','+Math.round(y*1e4)+','+Math.round(z*1e4);
+  for(let i=0;i<vcount;i++){
+    const lx=srcPos[i*3],ly=srcPos[i*3+1],lz=srcPos[i*3+2];
+    const wx=cx+lx*half,wy=cy+ly*half,wz=cz+lz*half;
+    const k=key(wx,wy,wz);
+    let vi=map.get(k);
+    if(vi===undefined){vi=verts.length/3;map.set(k,vi);verts.push(wx,wy,wz);}
+    idx.push(vi);
+  }
+  let positions=new Float32Array(verts);
+  let indices=new Uint32Array(idx);
+  /* ориентация: signed volume */
+  let vol=0;
+  for(let i=0;i<indices.length;i+=3){
+    const a=indices[i]*3,b=indices[i+1]*3,c=indices[i+2]*3;
+    const ax=positions[a],ay=positions[a+1],az=positions[a+2];
+    const bx=positions[b],by=positions[b+1],bz=positions[b+2];
+    const cx2=positions[c],cy2=positions[c+1],cz2=positions[c+2];
+    vol+=ax*(by*cz2-bz*cy2)-ay*(bx*cz2-bz*cx2)+az*(bx*cy2-by*cx2);
+  }
+  if(vol<0){for(let i=0;i<indices.length;i+=3){const t=indices[i+1];indices[i+1]=indices[i+2];indices[i+2]=t;}}
+  /* приземление и центрирование для Unity */
+  let miny=Infinity,mnx=Infinity,mxx=-Infinity,mnz=Infinity,mxz=-Infinity;
+  for(let i=0;i<positions.length;i+=3){
+    miny=Math.min(miny,positions[i+1]);mnx=Math.min(mnx,positions[i]);mxx=Math.max(mxx,positions[i]);
+    mnz=Math.min(mnz,positions[i+2]);mxz=Math.max(mxz,positions[i+2]);
+  }
+  const ox=(mnx+mxx)/2,oz=(mnz+mxz)/2;
+  for(let i=0;i<positions.length;i+=3){positions[i]-=ox;positions[i+1]-=miny;positions[i+2]-=oz;}
+  installMesh(positions,indices,res,performance.now()-t0);
+}
+function installMesh(positions,indices,res,ms){
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+  geo.setIndex(new THREE.BufferAttribute(indices,1));
+  geo.computeVertexNormals();
+  if(sculptMesh){scene.remove(sculptMesh);sculptMesh.geometry.dispose();}
+  if(!clayMat){clayMat=new THREE.MeshStandardMaterial({color:0x9aa7b4,roughness:0.62,metalness:0.02});}
+  clayMat.vertexColors=false;
+  sculptMesh=new THREE.Mesh(geo,clayMat);
+  sculptMesh.name='GMS_Sculpt';
+  sculptMesh.castShadow=true;sculptMesh.receiveShadow=true;
+  scene.add(sculptMesh);
+  mesh={positions,indices,count:positions.length/3,adjacency:buildAdjacency(indices,positions.length/3),mirrorMap:buildMirrorMap(positions)};
+  undoStack=[positions.slice()];undoIndex=0;
+  $('bExportGLB').disabled=false;
+  $('meshInfo').innerHTML='меш: <b>'+mesh.count+'</b> вершин · <b>'+(indices.length/3)+'</b> трис · сетка '+res+'³ · '+ms.toFixed(0)+' мс';
+  log('MESH-BUILD','единая болванка: '+mesh.count+' вершин, '+(indices.length/3)+' треугольников, '+ms.toFixed(0)+' мс · пол Y=0, центр X/Z=0');
+  updateHud();
+  setStatus('ok');
+}
+function buildAdjacency(indices,n){
+  const sets=Array.from({length:n},()=>new Set());
+  for(let i=0;i<indices.length;i+=3){
+    const a=indices[i],b=indices[i+1],c=indices[i+2];
+    sets[a].add(b);sets[a].add(c);sets[b].add(a);sets[b].add(c);sets[c].add(a);sets[c].add(b);
+  }
+  return sets.map(s=>Array.from(s));
+}
+function buildMirrorMap(positions){
+  const n=positions.length/3;const map=new Map();const cell=0.002;
+  const key=(x,y,z)=>Math.round(x/cell)+','+Math.round(y/cell)+','+Math.round(z/cell);
+  for(let i=0;i<n;i++)map.set(key(positions[i*3],positions[i*3+1],positions[i*3+2]),i);
+  const out=new Int32Array(n).fill(-1);
+  for(let i=0;i<n;i++){
+    const mx=-positions[i*3],my=positions[i*3+1],mz=positions[i*3+2];
+    const bx=Math.round(mx/cell),by=Math.round(my/cell),bz=Math.round(mz/cell);
+    let best=-1,bd=Infinity;
+    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){
+      const j=map.get((bx+dx)+','+(by+dy)+','+(bz+dz));
+      if(j===undefined)continue;
+      const d=Math.hypot(positions[j*3]-mx,positions[j*3+1]-my,positions[j*3+2]-mz);
+      if(d<bd){bd=d;best=j;}
+    }
+    if(bd<cell*2)out[i]=best;
+  }
+  return out;
+}
+
+/* ═══════════ THREE СЦЕНА ═══════════ */
+async function initThree(){
+  log('SYS-INIT','загрузка Three.js r160 + addons…');
+  THREE=await import('three');
+  ({OrbitControls}=await import('three/addons/controls/OrbitControls.js'));
+  ({TransformControls}=await import('three/addons/controls/TransformControls.js'));
+  ({GLTFExporter}=await import('three/addons/exporters/GLTFExporter.js'));
+  ({MarchingCubes}=await import('three/addons/objects/MarchingCubes.js'));
+  log('SYS-INIT','Three.js r'+THREE.REVISION+' · Orbit/Transform/GLTFExporter/MarchingCubes OK');
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  wrap3d.appendChild(renderer.domElement);
+  window.__booted=true;
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x0d1420);scene.fog=new THREE.Fog(0x0d1420,10,26);
+  perspCam=new THREE.PerspectiveCamera(42,1,0.02,120);
+  orthoCam=new THREE.OrthographicCamera(-1,1,1,-1,0.02,120);
+  activeCam=perspCam;
+  controls=new OrbitControls(activeCam,renderer.domElement);
+  controls.enableDamping=true;controls.dampingFactor=0.08;controls.minDistance=0.3;controls.maxDistance=30;
+  tc=new TransformControls(activeCam,renderer.domElement);
+  tc.addEventListener('dragging-changed',e=>{controls.enabled=!e.value;});
+  tc.addEventListener('objectChange',()=>{updateHud();});
+  scene.add(tc);
+  raycaster=new THREE.Raycaster();pointerNDC=new THREE.Vector2();
+  scene.add(new THREE.HemisphereLight(0xbfd4e6,0x1a2230,0.95));
+  const key=new THREE.DirectionalLight(0xffffff,1.7);key.position.set(3,6,4);key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=4;key.shadow.camera.bottom=-1;key.shadow.camera.far=20;key.shadow.bias=-0.0004;
+  scene.add(key);
+  const rim=new THREE.DirectionalLight(0x88bbff,0.5);rim.position.set(-4,3,-3);scene.add(rim);
+  const grid=new THREE.GridHelper(6,60,0x3a5068,0x1c2836);grid.position.y=0.002;scene.add(grid);
+  const axes=new THREE.AxesHelper(0.5);axes.position.y=0.004;scene.add(axes);
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(3.4,64),new THREE.ShadowMaterial({opacity:0.28}));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+  ring=new THREE.Mesh(new THREE.RingGeometry(0.92,1,48),new THREE.MeshBasicMaterial({color:0x22d3ee,side:THREE.DoubleSide,transparent:true,opacity:0.85,depthTest:false}));
+  ring.renderOrder=999;ring.visible=false;scene.add(ring);
+  const resize=()=>{const w=wrap3d.clientWidth,h=wrap3d.clientHeight;if(w<2||h<2)return;
+    renderer.setSize(w,h,false);
+    perspCam.aspect=w/h;perspCam.updateProjectionMatrix();
+    const hh=modelHeight*0.75,asp=w/h;
+    orthoCam.left=-hh*asp;orthoCam.right=hh*asp;orthoCam.top=hh;orthoCam.bottom=-hh;orthoCam.updateProjectionMatrix();};
+  new ResizeObserver(resize).observe(wrap3d);resize();
+  renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,activeCam);});
+  setView('3d',true);
+  log('SYS-INIT','сцена готова: свет, тени, сетка, OrbitControls, TransformControls');
+}
+function setView(name,instant){
+  const H=modelHeight,d=H*2.2;const tg=new THREE.Vector3(0,H*0.5,0);let pos;
+  if(name==='front')pos=new THREE.Vector3(0,H*0.5,d);
+  else if(name==='back')pos=new THREE.Vector3(0,H*0.5,-d);
+  else if(name==='left')pos=new THREE.Vector3(d,H*0.5,0);
+  else if(name==='right')pos=new THREE.Vector3(-d,H*0.5,0);
+  else{pos=new THREE.Vector3(H*1.3,H*0.95,H*1.6);tg.set(0,H*0.45,0);}
+  activeCam.position.copy(pos);controls.target.copy(tg);controls.update();
+  document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
+}
+function toggleOrtho(){
+  ortho=!ortho;
+  const pos=activeCam.position.clone();const tg=controls.target.clone();
+  activeCam=ortho?orthoCam:perspCam;
+  activeCam.position.copy(pos);controls.object=activeCam;tc.camera=activeCam;controls.target.copy(tg);controls.update();
+  $('bOrtho').textContent=ortho?'Ortho':'Persp';$('bOrtho').classList.toggle('active',ortho);
+  const w=wrap3d.clientWidth,h=wrap3d.clientHeight,hh=modelHeight*0.75,asp=w/h;
+  orthoCam.left=-hh*asp;orthoCam.right=hh*asp;orthoCam.top=hh;orthoCam.bottom=-hh;orthoCam.updateProjectionMatrix();
+  log('SYS-INIT','камера: '+(ortho?'ортографическая':'перспективная'));
+}
+
+/* ═══════════ СЛАЙДЫ ═══════════ */
+function buildSlideSlots(){
+  const host=$('slideSlots');
+  for(const def of SLIDE_DEFS){
+    const s={def,mesh:null,canvas:null,imgData:null,tex:null,name:null,visible:true};
+    slides[def.key]=s;
+    const card=document.createElement('div');card.className='slot';
+    const head=document.createElement('div');head.className='slot-head';
+    const nm=document.createElement('span');nm.className='slot-name';nm.textContent=def.label;
+    const st=document.createElement('span');st.className='slot-state';st.textContent='нет';
+    head.append(nm,st);
+    const act=document.createElement('div');act.className='slot-actions';
+    const bl=document.createElement('button');bl.className='btn btn-sm';bl.textContent='Загрузить';
+    const bc=document.createElement('button');bc.className='btn btn-sm';bc.textContent='×';bc.disabled=true;
+    const be=document.createElement('button');be.className='btn btn-sm';be.textContent='👁';be.disabled=true;
+    act.append(bl,bc,be);
+    card.append(head,act);host.appendChild(card);
+    s.els={card,st,bl,bc,be};
+    bl.addEventListener('click',()=>{pendingSlide=def.key;$('fileSlide').accept='.svg,.json,.png,.jpg,.jpeg,.webp,image/*,application/json';$('fileSlide').click();});
+    bc.addEventListener('click',()=>clearSlide(def.key));
+    be.addEventListener('click',()=>{s.visible=!s.visible;if(s.mesh)s.mesh.visible=s.visible;be.textContent=s.visible?'👁':'—';});
+  }
+}
+let pendingSlide=null;
+function svgFromVectorScene(o){
+  const w=o.width||512,h=o.height||512;
+  let body='';
+  for(const L of (o.colorLayers||[]))body+='<path d="'+L.path+'" fill="'+L.color+'" fill-rule="nonzero"/>';
+  const dp=(o.detailStrokes||[]).map(s=>s.path).join('');
+  if(dp)body+='<path d="'+dp+'" fill="none" stroke="#101820" stroke-width="1.2"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+body+'</svg>';
+}
+function rasterizeSVG(text){
+  return new Promise((resolve,reject)=>{
+    let w=1024,h=1024;
+    const vb=text.match(/viewBox\s*=\s*["']([\d.\-eE ]+)["']/);
+    const mw=text.match(/width\s*=\s*["']([\d.]+)/);const mh=text.match(/height\s*=\s*["']([\d.]+)/);
+    if(vb){const p=vb[1].trim().split(/[\s,]+/).map(Number);if(p.length===4&&p[2]>0&&p[3]>0){w=p[2];h=p[3];}}
+    if(mw&&mh){w=parseFloat(mw[1]);h=parseFloat(mh[1]);}
+    const scale=Math.min(1,1024/Math.max(w,h));
+    const cw=Math.max(2,Math.round(w*scale)),ch=Math.max(2,Math.round(h*scale));
+    const img=new Image();
+    img.onload=()=>{const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+      const c=cv.getContext('2d');c.drawImage(img,0,0,cw,ch);resolve(cv);};
+    img.onerror=()=>reject(new Error('SVG не декодирован'));
+    img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(text)));
+  });
+}
+function rasterizeImage(url){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{const scale=Math.min(1,1024/Math.max(img.naturalWidth,img.naturalHeight));
+      const cv=document.createElement('canvas');cv.width=Math.round(img.naturalWidth*scale);cv.height=Math.round(img.naturalHeight*scale);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);resolve(cv);};
+    img.onerror=()=>reject(new Error('растр не декодирован'));
+    img.src=url;
+  });
+}
+async function loadSlideFile(key,file){
+  if(!file)return;
+  const s=slides[key];
+  try{
+    let canvas;
+    const nm=file.name.toLowerCase();
+    if(nm.endsWith('.json')){
+      const o=JSON.parse(await file.text());
+      if(o.format!=='VectorScene'&&!(o.colorLayers||o.layers))throw new Error('не Vector Scene JSON');
+      canvas=await rasterizeSVG(svgFromVectorScene(o.colorLayers?o:{...o,colorLayers:o.layers||[]}));
+    } else if(nm.endsWith('.svg')||file.type==='image/svg+xml'){
+      canvas=await rasterizeSVG(await file.text());
+    } else {
+      const url=URL.createObjectURL(file);
+      canvas=await rasterizeImage(url);URL.revokeObjectURL(url);
+    }
+    setSlideCanvas(key,canvas,file.name);
+    log('SLIDE-LOAD',key.toUpperCase()+': '+file.name+' → '+canvas.width+'×'+canvas.height+'px');
+  }catch(e){log('ERR-SLIDE',key.toUpperCase()+': '+e.message);}
+}
+function setSlideCanvas(key,canvas,name){
+  const s=slides[key];
+  if(s.tex)s.tex.dispose();
+  s.canvas=canvas;s.name=name;
+  s.imgData=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+  s.tex=new THREE.CanvasTexture(canvas);s.tex.colorSpace=THREE.SRGBColorSpace;s.tex.anisotropy=4;
+  if(!s.mesh){
+    const mat=new THREE.MeshBasicMaterial({transparent:true,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
+    s.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat);
+    s.mesh.userData.slideKey=key;
+    scene.add(s.mesh);
+  }
+  s.mesh.material.map=s.tex;s.mesh.material.opacity=(+$('rSlideOp').value)/100;s.mesh.material.needsUpdate=true;
+  s.mesh.visible=s.visible;
+  autoPlaceSlide(key);
+  s.els.card.classList.add('loaded');s.els.st.textContent=name;s.els.bc.disabled=false;s.els.be.disabled=false;
+  applyXray();
+}
+function clearSlide(key){
+  const s=slides[key];
+  if(tc.object===s.mesh)tc.detach();
+  if(s.mesh){scene.remove(s.mesh);s.mesh.material.dispose();s.mesh=null;}
+  if(s.tex){s.tex.dispose();s.tex=null;}
+  s.canvas=null;s.imgData=null;s.name=null;
+  s.els.card.classList.remove('loaded');s.els.st.textContent='нет';s.els.bc.disabled=true;s.els.be.disabled=true;
+  log('SLIDE-LOAD',key.toUpperCase()+': слот очищен');
+}
+function autoPlaceSlide(key){
+  const s=slides[key];if(!s.mesh||!s.canvas)return;
+  const H=modelHeight;const asp=s.canvas.width/s.canvas.height;
+  const h=H*1.05,w=h*asp;
+  s.mesh.scale.set(w,h,1);
+  const D=Math.max(0.9,H*0.6);
+  const d=s.def;
+  if(d.axis==='z')s.mesh.position.set(0,h/2,d.sign*D);else s.mesh.position.set(d.sign*D,h/2,0);
+  s.mesh.rotation.set(0,d.rotY,0);
+}
+function autoPlaceAll(){for(const d of SLIDE_DEFS)autoPlaceSlide(d.key);log('SLIDE-LOAD','слайды расставлены по осям вокруг скелета');}
+function applyXray(){
+  const xr=$('cXray').checked;
+  for(const d of SLIDE_DEFS){const s=slides[d.key];if(!s.mesh)continue;
+    s.mesh.material.depthTest=!xr;s.mesh.renderOrder=xr?10:0;}
+  if(clayMat){clayMat.transparent=xr;clayMat.opacity=xr?0.45:1;clayMat.needsUpdate=true;}
+}
+
+/* ═══════════ СКУЛЬПТИНГ ═══════════ */
+function brushRadius(){return +$('rRadius').value;}
+function brushStrength(){return (+$('rStrength').value)/100;}
+function mirrorOn(){return $('cMirror').checked;}
+function falloff(d,r){const t=1-d/r;return t*t*(3-2*t);}
+function pushUndo(){
+  undoStack=undoStack.slice(0,undoIndex+1);
+  undoStack.push(mesh.positions.slice());
+  if(undoStack.length>UNDO_MAX)undoStack.shift();
+  undoIndex=undoStack.length-1;
+}
+function doUndo(){
+  if(!mesh||undoIndex<=0)return;
+  undoIndex--;mesh.positions.set(undoStack[undoIndex]);
+  commitPositions();log('SCULPT','undo → '+undoIndex+'/'+(undoStack.length-1));
+}
+function doRedo(){
+  if(!mesh||undoIndex>=undoStack.length-1)return;
+  undoIndex++;mesh.positions.set(undoStack[undoIndex]);
+  commitPositions();log('SCULPT','redo → '+undoIndex+'/'+(undoStack.length-1));
+}
+function commitPositions(){
+  sculptMesh.geometry.attributes.position.needsUpdate=true;
+  sculptMesh.geometry.computeVertexNormals();
+  sculptMesh.geometry.computeBoundingSphere();
+}
+function raycastMesh(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  pointerNDC.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(pointerNDC,activeCam);
+  const hits=raycaster.intersectObject(sculptMesh,false);
+  return hits.length?hits[0]:null;
+}
+function updateRing(hit){
+  if(!hit||mode!=='sculpt'){ring.visible=false;return;}
+  ring.visible=true;
+  const n=hit.face.normal.clone().transformDirection(sculptMesh.matrixWorld);
+  ring.position.copy(hit.point).addScaledVector(n,0.003);
+  ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+  ring.scale.setScalar(brushRadius());
+}
+function applyInflate(center,sign){
+  const r=brushRadius(),mag=brushStrength()*0.006*sign;
+  const pos=mesh.positions,nrm=sculptMesh.geometry.attributes.normal.array;
+  const centers=[center];
+  if(mirrorOn())centers.push(new THREE.Vector3(-center.x,center.y,center.z));
+  let affected=0;
+  for(let i=0;i<mesh.count;i++){
+    const px=pos[i*3],py=pos[i*3+1],pz=pos[i*3+2];
+    let w=0;
+    for(const c of centers){const d=Math.hypot(px-c.x,py-c.y,pz-c.z);if(d<r){w=Math.max(w,falloff(d,r));}}
+    if(w<=0)continue;
+    pos[i*3]+=nrm[i*3]*mag*w;pos[i*3+1]+=nrm[i*3+1]*mag*w;pos[i*3+2]+=nrm[i*3+2]*mag*w;
+    affected++;
+  }
+  return affected;
+}
+function applySmooth(center){
+  const r=brushRadius(),f=brushStrength()*0.5;
+  const pos=mesh.positions,adj=mesh.adjacency;
+  const centers=[center];
+  if(mirrorOn())centers.push(new THREE.Vector3(-center.x,center.y,center.z));
+  const targets=[];
+  for(let i=0;i<mesh.count;i++){
+    const px=pos[i*3],py=pos[i*3+1],pz=pos[i*3+2];
+    let w=0;for(const c of centers){const d=Math.hypot(px-c.x,py-c.y,pz-c.z);if(d<r)w=Math.max(w,falloff(d,r));}
+    if(w>0)targets.push([i,w]);
+  }
+  const snapshot=pos.slice();
+  for(const [i,w] of targets){
+    const nb=adj[i];if(!nb.length)continue;
+    let sx=0,sy=0,sz=0;
+    for(const j of nb){sx+=snapshot[j*3];sy+=snapshot[j*3+1];sz+=snapshot[j*3+2];}
+    const n=nb.length;const t=f*w;
+    pos[i*3]+=(sx/n-snapshot[i*3])*t;pos[i*3+1]+=(sy/n-snapshot[i*3+1])*t;pos[i*3+2]+=(sz/n-snapshot[i*3+2])*t;
+  }
+  return targets.length;
+}
+function startGrab(hit){
+  const r=brushRadius();const pos=mesh.positions;
+  const list=[];
+  for(let i=0;i<mesh.count;i++){
+    const d=Math.hypot(pos[i*3]-hit.point.x,pos[i*3+1]-hit.point.y,pos[i*3+2]-hit.point.z);
+    if(d<r)list.push({i,w:falloff(d,r),ox:pos[i*3],oy:pos[i*3+1],oz:pos[i*3+2]});
+  }
+  const camDir=new THREE.Vector3();activeCam.getWorldDirection(camDir);
+  const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(camDir,hit.point);
+  stroke={type:'grab',list,plane,start:hit.point.clone(),affected:list.length};
+}
+function moveGrab(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  pointerNDC.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(pointerNDC,activeCam);
+  const p=new THREE.Vector3();
+  if(!raycaster.ray.intersectPlane(stroke.plane,p))return;
+  const dx=p.x-stroke.start.x,dy=p.y-stroke.start.y,dz=p.z-stroke.start.z;
+  const pos=mesh.positions;const mir=mirrorOn();
+  for(const g of stroke.list){
+    pos[g.i*3]=g.ox+dx*g.w;pos[g.i*3+1]=g.oy+dy*g.w;pos[g.i*3+2]=g.oz+dz*g.w;
+    if(mir){const m=mesh.mirrorMap[g.i];if(m>=0){pos[m*3]=g.ox*-1-dx*g.w+ (g.ox*2); /* mirrored base */ pos[m*3]=(-g.ox)-dx*g.w;pos[m*3+1]=g.oy+dy*g.w;pos[m*3+2]=g.oz+dz*g.w;}}
+  }
+  stroke.affected=stroke.list.length;
+}
+function bindSculptInput(){
+  const dom=renderer.domElement;
+  dom.addEventListener('contextmenu',e=>e.preventDefault());
+  dom.addEventListener('pointermove',e=>{
+    if(mode==='sculpt'&&sculptMesh){
+      if(stroke){
+        if(stroke.type==='grab')moveGrab(e);
+        else if(stroke.type==='inflate')stroke.affected=applyInflate(stroke.center,e.ctrlKey?-1:1);
+        else if(stroke.type==='smooth')stroke.affected=applySmooth(stroke.center);
+        commitPositions();
+        const hit=raycastMesh(e);updateRing(hit);
+        return;
+      }
+      const hit=raycastMesh(e);hoverHit=hit;updateRing(hit);
+    } else if(mode==='slides'){
+      ring.visible=false;
+    }
+  });
+  dom.addEventListener('pointerdown',e=>{
+    if(e.button!==0)return;
+    if(mode==='sculpt'&&sculptMesh){
+      const hit=raycastMesh(e);
+      if(!hit)return;
+      controls.enabled=false;
+      dom.setPointerCapture(e.pointerId);
+      if(brush==='grab')startGrab(hit);
+      else stroke={type:brush,center:hit.point.clone(),affected:0};
+      if(stroke.type==='inflate')stroke.affected=applyInflate(stroke.center,e.ctrlKey?-1:1);
+      if(stroke.type==='smooth')stroke.affected=applySmooth(stroke.center);
+      commitPositions();
+    } else if(mode==='slides'){
+      const r=dom.getBoundingClientRect();
+      pointerNDC.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+      raycaster.setFromCamera(pointerNDC,activeCam);
+      const meshes=SLIDE_DEFS.map(d=>slides[d.key].mesh).filter(Boolean);
+      const hits=raycaster.intersectObjects(meshes,false);
+      if(hits.length){tc.attach(hits[0].object);log('SLIDE-LOAD','выбран слайд '+hits[0].object.userData.slideKey.toUpperCase()+' → TransformControls');}
+      else tc.detach();
+    }
+  });
+  const endStroke=e=>{
+    if(stroke){
+      pushUndo();
+      log('SCULPT',brush+' · затронуто '+stroke.affected+' вершин · радиус '+brushRadius().toFixed(2)+' м');
+      stroke=null;controls.enabled=true;
+    }
+  };
+  dom.addEventListener('pointerup',endStroke);
+  dom.addEventListener('pointercancel',endStroke);
+  dom.addEventListener('pointerleave',()=>{if(!stroke){ring.visible=false;hoverHit=null;}});
+}
+function setMode(m){
+  mode=m;
+  if(m==='sculpt'){tc.detach();}
+  else{ring.visible=false;stroke=null;controls.enabled=true;}
+  $('bMode').textContent='Режим: '+(m==='sculpt'?'Скульпт':'Слайды');
+  $('bMode').classList.toggle('active',m==='sculpt');
+  document.querySelectorAll('.tmode-btn').forEach(b=>b.disabled=(m==='sculpt'));
+  hint3d.innerHTML=m==='sculpt'
+    ?'ЛКМ по мешу — лепка · Ctrl+ЛКМ — вдавить<br>Q/W/E — кисти · [ ] — радиус · Tab — режим'
+    :'Клик по слайду — TransformControls<br>G/R/S — move/rotate/scale · Tab — режим';
+  updateHud();
+}
+function setBrush(b){
+  brush=b;
+  document.querySelectorAll('.brush-btn').forEach(x=>x.classList.toggle('active',x.dataset.brush===b));
+  if(mode!=='sculpt')setMode('sculpt');
+}
+function updateHud(){
+  hud3d.innerHTML='рост: <b>'+Math.round(modelHeight*100)+' см</b> · режим: <b>'+(mode==='sculpt'?'СКУЛЬПТ':'СЛАЙДЫ')+'</b>'+
+    (mesh?' · вершин: <b>'+mesh.count+'</b>':'')+
+    (tc.object?' · слайд: <b>'+tc.object.userData.slideKey.toUpperCase()+'</b>':'');
+}
+
+/* ═══════════ ЗАПЕЧКА ЦВЕТА ═══════════ */
+function bakeColors(){
+  if(!mesh){log('WARN-BAKE','меш не построен');return;}
+  const loaded=SLIDE_DEFS.map(d=>slides[d.key]).filter(s=>s.mesh&&s.imgData);
+  if(!loaded.length){log('WARN-BAKE','нет загруженных слайдов для запечки');return;}
+  const pos=mesh.positions,nrm=sculptMesh.geometry.attributes.normal.array;
+  const colors=new Float32Array(mesh.count*3);
+  const v=new THREE.Vector3(),n=new THREE.Vector3(),sn=new THREE.Vector3(),local=new THREE.Vector3();
+  let painted=0;
+  const clay=new THREE.Color(0x9aa7b4);
+  for(let i=0;i<mesh.count;i++){
+    v.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
+    n.set(nrm[i*3],nrm[i*3+1],nrm[i*3+2]).normalize();
+    let r=0,g=0,b=0,wsum=0;
+    for(const s of loaded){
+      s.mesh.updateMatrixWorld();
+      sn.set(0,0,1).transformDirection(s.mesh.matrixWorld);
+      let w=Math.max(0,n.dot(sn));w=Math.pow(w,2);
+      if(w<=0.02)continue;
+      local.copy(v);s.mesh.worldToLocal(local);
+      const u=local.x+0.5,vv=local.y+0.5;
+      if(u<0||u>1||vv<0||vv>1)continue;
+      const cw=s.canvas.width,ch=s.canvas.height;
+      const px=clamp(Math.floor(u*cw),0,cw-1),py=clamp(Math.floor((1-vv)*ch),0,ch-1);
+      const o=(py*cw+px)*4;const d=s.imgData.data;
+      if(d[o+3]<40)continue;
+      r+=(d[o]/255)*w;g+=(d[o+1]/255)*w;b+=(d[o+2]/255)*w;wsum+=w;
+    }
+    if(wsum>0.02){colors[i*3]=r/wsum;colors[i*3+1]=g/wsum;colors[i*3+2]=b/wsum;painted++;}
+    else{colors[i*3]=clay.r;colors[i*3+1]=clay.g;colors[i*3+2]=clay.b;}
+  }
+  sculptMesh.geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  clayMat.vertexColors=true;clayMat.color.set(0xffffff);clayMat.needsUpdate=true;
+  log('BAKE','vertex colors запечены: '+painted+'/'+mesh.count+' вершин с '+loaded.length+' слайдов');
+}
+function resetClay(){
+  if(!sculptMesh)return;
+  sculptMesh.geometry.deleteAttribute('color');
+  clayMat.vertexColors=false;clayMat.color.set(0x9aa7b4);clayMat.needsUpdate=true;
+  log('BAKE','возврат серой глины');
+}
+
+/* ═══════════ ЭКСПОРТ GLB / ПРОЕКТ ═══════════ */
+function exportGLB(){
+  if(!sculptMesh){log('WARN-EXPORT','меш не построен');return;}
+  setStatus('busy');
+  const exporter=new GLTFExporter();
+  const clone=sculptMesh.clone();
+  clone.geometry=sculptMesh.geometry;
+  clone.name='GMS_Sculpt_Unity';
+  exporter.parse(clone,(buf)=>{
+    const blob=new Blob([buf],{type:'model/gltf-binary'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gms_sculpt_unity.glb';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    log('OK-EXPORT','.glb сохранён: '+(blob.size/1024).toFixed(1)+' КБ · метры, пол Y=0 · vertexColors='+(clayMat.vertexColors?'ON':'OFF'));
+    setStatus('ok');
+  },(err)=>{log('ERR-EXPORT','GLTFExporter: '+err.message);setStatus('err');},{binary:true});
+}
+function saveProject(){
+  if(!mesh){log('WARN-EXPORT','нечего сохранять');return;}
+  const proj={
+    format:'GMS-SculptProject',version:1,generatedAt:new Date().toISOString(),
+    skeleton:skeletonRaw,modelHeight,
+    geometry:{positions:f32ToB64(mesh.positions),indices:u32ToB64(mesh.indices),
+      colors:sculptMesh.geometry.attributes.color?f32ToB64(sculptMesh.geometry.attributes.color.array):null},
+    slides:SLIDE_DEFS.map(d=>{const s=slides[d.key];return s.mesh?{
+      key:d.key,name:s.name,visible:s.visible,dataURL:s.canvas.toDataURL('image/png'),
+      position:s.mesh.position.toArray(),rotation:[s.mesh.rotation.x,s.mesh.rotation.y,s.mesh.rotation.z],scale:s.mesh.scale.toArray()}:null;}),
+    brush:{radius:brushRadius(),strength:brushStrength(),mirror:mirrorOn(),xray:$('cXray').checked,slideOp:+$('rSlideOp').value}
+  };
+  const blob=new Blob([JSON.stringify(proj)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gms_sculpt_project.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  log('OK-EXPORT','проект сохранён: '+(blob.size/1024).toFixed(1)+' КБ (геометрия + слайды + кисти)');
+}
+async function loadProject(file){
+  try{
+    const o=JSON.parse(await file.text());
+    if(o.format!=='GMS-SculptProject')throw new Error('не GMS-SculptProject');
+    if(o.skeleton)adoptSkeleton(o.skeleton,'проект');
+    modelHeight=o.modelHeight||1.8;
+    const positions=b64ToF32(o.geometry.positions);
+    const indices=b64ToU32(o.geometry.indices);
+    installMesh(positions,indices,0,0);
+    if(o.geometry.colors){
+      sculptMesh.geometry.setAttribute('color',new THREE.BufferAttribute(b64ToF32(o.geometry.colors),3));
+      clayMat.vertexColors=true;clayMat.color.set(0xffffff);clayMat.needsUpdate=true;
+    }
+    for(const sd of (o.slides||[])){
+      if(!sd)continue;
+      const cv=await rasterizeImage(sd.dataURL);
+      setSlideCanvas(sd.key,cv,sd.name||sd.key);
+      const s=slides[sd.key];
+      s.mesh.position.fromArray(sd.position);
+      s.mesh.rotation.set(sd.rotation[0],sd.rotation[1],sd.rotation[2]);
+      s.mesh.scale.fromArray(sd.scale);
+      s.visible=sd.visible!==false;s.mesh.visible=s.visible;
+    }
+    if(o.brush){
+      $('rRadius').value=o.brush.radius;$('vRadius').textContent=(+o.brush.radius).toFixed(2);
+      $('rStrength').value=Math.round(o.brush.strength*100);$('vStrength').textContent=Math.round(o.brush.strength*100)+' %';
+      $('cMirror').checked=!!o.brush.mirror;$('cXray').checked=!!o.brush.xray;
+      $('rSlideOp').value=o.brush.slideOp;$('vSlideOp').textContent=o.brush.slideOp+' %';
+      applyXray();
+    }
+    log('DATA-LOAD','проект загружен: '+mesh.count+' вершин, слайды восстановлены');
+    setStatus('ok');
+  }catch(e){log('ERR-IMPORT','проект: '+e.message);}
+}
+
+/* ═══════════ UI ═══════════ */
+function paintSlider(el){const p=(el.value-el.min)/(el.max-el.min)*100;el.style.background='linear-gradient(90deg,var(--acc) '+p+'%,#1e2833 '+p+'%)';}
+function bindUI(){
+  const rs=$('rRadius'),vs=$('vRadius'),st=$('rStrength'),vst=$('vStrength'),so=$('rSlideOp'),vso=$('vSlideOp');
+  const upd=()=>{vs.textContent=(+rs.value).toFixed(2);vst.textContent=st.value+' %';vso.textContent=so.value+' %';
+    paintSlider(rs);paintSlider(st);paintSlider(so);
+    for(const d of SLIDE_DEFS){const s=slides[d.key];if(s.mesh)s.mesh.material.opacity=(+so.value)/100;}
+    if(ring.visible)ring.scale.setScalar(brushRadius());};
+  [rs,st,so].forEach(el=>el.addEventListener('input',upd));upd();
+  $('cXray').addEventListener('change',()=>{applyXray();log('SLIDE-LOAD','X-Ray '+( $('cXray').checked?'ON':'OFF'));});
+  $('cMirror').addEventListener('change',()=>log('SCULPT','зеркало X '+(mirrorOn()?'ON':'OFF')));
+  $('bLoadSkel').addEventListener('click',()=>$('fileSkel').click());
+  $('fileSkel').addEventListener('change',async()=>{
+    const f=$('fileSkel').files[0];$('fileSkel').value='';if(!f)return;
+    try{adoptSkeleton(JSON.parse(await f.text()),f.name);await buildMesh(+ $('selRes').value);}catch(e){log('ERR-IMPORT','скелет: '+e.message);}
+  });
+  $('bPickLocal').addEventListener('click',async()=>{
+    try{const raw=localStorage.getItem(LS_KEY);if(!raw)throw new Error('localStorage пуст (Окно 1 не сохранялось)');
+      adoptSkeleton(JSON.parse(raw),'localStorage Окна 1');await buildMesh(+ $('selRes').value);}catch(e){log('ERR-IMPORT',e.message);}
+  });
+  $('bDemo').addEventListener('click',async()=>{adoptSkeleton(demoSkeleton(),'демо A-Pose');await buildMesh(+ $('selRes').value);});
+  $('bRebuild').addEventListener('click',()=>buildMesh(+ $('selRes').value));
+  $('bAutoPlace').addEventListener('click',autoPlaceAll);
+  $('fileSlide').addEventListener('change',()=>{const f=$('fileSlide').files[0];$('fileSlide').value='';if(pendingSlide)loadSlideFile(pendingSlide,f);pendingSlide=null;});
+  document.querySelectorAll('.brush-btn').forEach(b=>b.addEventListener('click',()=>setBrush(b.dataset.brush)));
+  $('bNormals').addEventListener('click',()=>{if(sculptMesh){sculptMesh.geometry.computeVertexNormals();log('SCULPT','нормали пересчитаны');}});
+  $('bResetSculpt').addEventListener('click',()=>{if(mesh&&undoStack.length){mesh.positions.set(undoStack[0]);commitPositions();pushUndo();log('SCULPT','лепка сброшена к исходной болванке');}});
+  $('bBake').addEventListener('click',bakeColors);
+  $('bClay').addEventListener('click',resetClay);
+  $('bExportGLB').addEventListener('click',exportGLB);
+  $('bSaveProj').addEventListener('click',saveProject);
+  $('bLoadProj').addEventListener('click',()=>$('fileProj').click());
+  $('fileProj').addEventListener('change',()=>{const f=$('fileProj').files[0];$('fileProj').value='';if(f)loadProject(f);});
+  $('bMode').addEventListener('click',()=>setMode(mode==='sculpt'?'slides':'sculpt'));
+  document.querySelectorAll('.tmode-btn').forEach(b=>b.addEventListener('click',()=>{tc.setMode(b.dataset.tmode);document.querySelectorAll('.tmode-btn').forEach(x=>x.classList.toggle('active',x===b));}));
+  document.querySelectorAll('.view-btn').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+  $('bOrtho').addEventListener('click',toggleOrtho);
+  $('bCopy').addEventListener('click',copyLog);
+  $('bClearLog').addEventListener('click',clearLog);
+  $('bCollapse').addEventListener('click',()=>{consoleEl.classList.toggle('collapsed');$('bCollapse').textContent=consoleEl.classList.contains('collapsed')?'▴':'▾';});
+  window.addEventListener('keydown',e=>{
+    const t=document.activeElement;const typing=t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
+    if(typing)return;
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?doRedo():doUndo();return;}
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();doRedo();return;}
+    if(e.key==='Tab'){e.preventDefault();setMode(mode==='sculpt'?'slides':'sculpt');return;}
+    if(e.key==='1'){e.preventDefault();setView(e.ctrlKey?'back':'front');return;}
+    if(e.key==='3'){e.preventDefault();setView(e.ctrlKey?'left':'right');return;}
+    if(e.key==='5'){toggleOrtho();return;}
+    const k=e.key.toLowerCase();
+    if(k==='q')setBrush('inflate');else if(k==='w')setBrush('grab');else if(k==='e')setBrush('smooth');
+    else if(k==='g'&&mode==='slides'){tc.setMode('translate');syncTmode('translate');}
+    else if(k==='r'&&mode==='slides'){tc.setMode('rotate');syncTmode('rotate');}
+    else if(k==='s'&&mode==='slides'){tc.setMode('scale');syncTmode('scale');}
+    else if(e.key==='['){$('rRadius').value=Math.max(0.02,brushRadius()-0.02);$('rRadius').dispatchEvent(new Event('input'));}
+    else if(e.key===']'){$('rRadius').value=Math.min(0.5,brushRadius()+0.02);$('rRadius').dispatchEvent(new Event('input'));}
+  });
+}
+function syncTmode(m){document.querySelectorAll('.tmode-btn').forEach(x=>x.classList.toggle('active',x.dataset.tmode===m));}
+
+/* ═══════════ ЗАПУСК ═══════════ */
+async function boot(){
+  log('SYS-INIT','GMS-0047 · SCULPT WORKBENCH v'+VERSION+' · SDF-болванка + слайды + скульптинг + GLB');
+  buildSlideSlots();
+  bindUI();
+  setStatus('busy');
+  try{await initThree();}
+  catch(e){
+    log('ERR-CDN','Three.js: '+String((e&&e.message)||e));
+    const d=document.createElement('div');d.className='boot-error';
+    d.innerHTML='ОШИБКА ЗАГРУЗКИ THREE.JS<br>проверьте доступ к unpkg.com и перезагрузите';
+    wrap3d.appendChild(d);setStatus('err');return;
+  }
+  bindSculptInput();
+  setMode('slides');
+  /* автоподхват localStorage Окна 1, иначе демо */
+  let src=null,label='';
+  try{const raw=localStorage.getItem(LS_KEY);if(raw){src=JSON.parse(raw);label='localStorage Окна 1';}}catch(e){}
+  if(!src){src=demoSkeleton();label='демо A-Pose';log('SYS-INIT','localStorage Окна 1 пуст — загружен демо-скелет');}
+  try{adoptSkeleton(src,label);await buildMesh(+ $('selRes').value);}
+  catch(e){log('ERR-MESH',String((e&&e.message)||e));setStatus('err');}
+  log('SYS-INIT','верстак готов: Tab — режимы, Q/W/E — кисти, 1/3/Ctrl+1/Ctrl+3 — виды, 5 — орто');
+}
+boot();
+</script>
+</body>
+</html>
