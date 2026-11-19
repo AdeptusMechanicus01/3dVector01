@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox,
     QComboBox, QSlider, QSplitter, QFileDialog, QMessageBox,
     QScrollArea, QFrame, QGraphicsView, QGraphicsScene, QGraphicsItem,
-    QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem
+    QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem, QGraphicsPathItem
 )
 from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF, QPointF, QTimer
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush, QPainterPath, QTransform
