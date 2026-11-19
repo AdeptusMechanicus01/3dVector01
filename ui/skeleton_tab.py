@@ -1,5 +1,5 @@
 """
-Skeleton Builder tab for creating and editing character skeletons
+Вкладка конструктора скелета для создания и редактирования скелета персонажа
 """
 
 import os
@@ -24,7 +24,7 @@ from ui.styles import Colors, Fonts
 
 
 class JointItem(QGraphicsEllipseItem):
-    """Graphics item for a joint"""
+    """Графический элемент для сустава"""
     
     def __init__(self, joint: Joint, radius: float = 8):
         super().__init__(-radius, -radius, radius * 2, radius * 2)
@@ -35,12 +35,12 @@ class JointItem(QGraphicsEllipseItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
         
-        # Set colors based on joint type
+        # Устанавливаем цвета в зависимости от типа сустава
         self._update_brush()
         self.setPen(QPen(QColor(255, 255, 255, 180), 1))
     
     def _update_brush(self) -> None:
-        """Update brush based on joint properties"""
+        """Обновляем кисть в зависимости от свойств сустава"""
         if self.joint.role == JointRole.ROOT:
             color = Colors.ACCENT_ORANGE
         elif self.joint.role == JointRole.HEAD or self.joint.role == JointRole.HEADTOP:
@@ -56,29 +56,35 @@ class JointItem(QGraphicsEllipseItem):
         self.setBrush(brush)
     
     def hoverEnterEvent(self, event) -> None:
-        """Handle hover enter"""
+        """Обработка наведения мыши"""
         self.setScale(1.25)
         super().hoverEnterEvent(event)
     
     def hoverLeaveEvent(self, event) -> None:
-        """Handle hover leave"""
+        """Обработка ухода мыши"""
         self.setScale(1.0)
         super().hoverLeaveEvent(event)
     
     def mousePressEvent(self, event) -> None:
-        """Handle mouse press"""
+        """Обработка нажатия мыши"""
         if event.button() == Qt.MouseButton.LeftButton:
-            self.setZValue(10)  # Bring to front
+            self.setZValue(10)  # Поднимаем на передний план
         super().mousePressEvent(event)
     
     def mouseReleaseEvent(self, event) -> None:
-        """Handle mouse release"""
+        """Обработка отпускания мыши"""
         self.setZValue(0)
         super().mouseReleaseEvent(event)
+    
+    def update_from_joint(self, joint: Joint) -> None:
+        """Обновляем из объекта Joint"""
+        self.joint = joint
+        self.setPos(QPointF(joint.x, joint.y))
+        self._update_brush()
 
 
 class BoneItem(QGraphicsLineItem):
-    """Graphics item for a bone"""
+    """Графический элемент для кости"""
     
     def __init__(self, from_joint: JointItem, to_joint: JointItem):
         super().__init__()
@@ -92,28 +98,30 @@ class BoneItem(QGraphicsLineItem):
         self._update_line()
     
     def _update_line(self) -> None:
-        """Update line position"""
+        """Обновляем линию"""
         line = QLineF(
             self.from_joint.pos(),
             self.to_joint.pos()
         )
         self.setLine(line)
+    
+    def update_positions(self) -> None:
+        """Обновляем позиции"""
+        self._update_line()
 
 
 class ContourItem(QGraphicsPathItem):
-    """Graphics item for a body contour"""
+    """Графический элемент для контура тела"""
     
     def __init__(self, contour: BodyContour):
         super().__init__()
         
         self.contour = contour
         self.setPen(QPen(Colors.ACCENT_GREEN, 2))
-        self.setBrush(QBrush(QColor(52, 211, 153, 40)))
-        
         self._update_path()
     
     def _update_path(self) -> None:
-        """Update path from contour points"""
+        """Обновляем путь"""
         if not self.contour.points:
             return
         
@@ -122,14 +130,11 @@ class ContourItem(QGraphicsPathItem):
         for point in self.contour.points[1:]:
             path.lineTo(QPointF(point.x, point.y))
         
-        if len(self.contour.points) >= 3:
-            path.closeSubpath()
-        
         self.setPath(path)
 
 
 class SkeletonView(QGraphicsView):
-    """Graphics view for displaying and editing skeleton"""
+    """Вид для отображения скелета"""
     
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
@@ -137,279 +142,146 @@ class SkeletonView(QGraphicsView):
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
         
-        # Settings
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
-        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.SmoothPixmapTransform)
         
-        # Colors
-        self.setStyleSheet("background-color: #0a0e13;")
-        self.scene.setBackgroundBrush(QBrush(QColor(10, 14, 19)))
+        # Настройки отображения
+        self._zoom: float = 1.0
+        self._pan: QPointF = QPointF(0, 0)
         
-        # Grid
-        self._show_grid = True
-        self._grid_size = 20
-        
-        # Items
+        # Элементы скелета
         self.joint_items: Dict[str, JointItem] = {}
         self.bone_items: List[BoneItem] = []
         self.contour_items: List[ContourItem] = []
+        
+        # Референсные контуры
         self.reference_contour_items: List[QGraphicsPathItem] = []
         
-        # Selection
-        self._selected_joint: Optional[JointItem] = None
-        self._hovered_joint: Optional[JointItem] = None
+        # Настройки
+        self._joint_radius: float = 8
+        self._show_joint_names: bool = True
         
-        # Pan and zoom
-        self._zoom = 1.0
-        self._pan = QPointF(0, 0)
-        
-        # Setup scene
-        self._setup_scene()
+        # Устанавливаем размеры
+        self.setMinimumSize(400, 400)
     
-    def _setup_scene(self) -> None:
-        """Setup the graphics scene"""
-        # Set scene size
-        self.scene.setSceneRect(-1000, -1000, 2000, 2000)
-        
-        # Add grid
-        self._add_grid()
-        
-        # Add axis
-        self._add_axis()
-    
-    def _add_grid(self) -> None:
-        """Add grid to scene"""
-        if not self._show_grid:
-            return
-        
-        grid_pen = QPen(QColor(40, 50, 60, 80), 1)
-        grid_pen.setStyle(Qt.PenStyle.DashLine)
-        
-        grid_size = self._grid_size
-        scene_rect = self.scene.sceneRect()
-        
-        # Vertical lines
-        x = int(math.floor(scene_rect.left() / grid_size)) * grid_size
-        while x <= scene_rect.right():
-            self.scene.addLine(x, scene_rect.top(), x, scene_rect.bottom(), grid_pen)
-            x += grid_size
-        
-        # Horizontal lines
-        y = int(math.floor(scene_rect.top() / grid_size)) * grid_size
-        while y <= scene_rect.bottom():
-            self.scene.addLine(scene_rect.left(), y, scene_rect.right(), y, grid_pen)
-            y += grid_size
-    
-    def _add_axis(self) -> None:
-        """Add coordinate axis to scene"""
-        # X axis (red)
-        x_pen = QPen(Colors.AXIS_X, 2)
-        self.scene.addLine(0, 0, 100, 0, x_pen)
-        
-        # Y axis (green)
-        y_pen = QPen(Colors.AXIS_Y, 2)
-        self.scene.addLine(0, 0, 0, -100, y_pen)  # Note: Y is inverted in Qt
-        
-        # Z axis would be out of screen
-    
-    def set_skeleton(self, skeleton: Skeleton) -> None:
-        """Set the skeleton to display"""
-        # Clear existing items
-        self._clear_items()
+    def set_skeleton(self, skeleton: Optional[Skeleton]) -> None:
+        """Устанавливаем скелет"""
+        self.clear()
         
         if skeleton is None:
             return
         
-        # Add joints
+        # Создаём элементы для суставов
         for joint_id, joint in skeleton.joints.items():
-            item = JointItem(joint)
-            item.setPos(joint.x, -joint.y)  # Note: Y is inverted
+            item = JointItem(joint, self._joint_radius)
+            item.setPos(QPointF(joint.x, joint.y))
             self.scene.addItem(item)
             self.joint_items[joint_id] = item
         
-        # Add bones
+        # Создаём элементы для костей
         for bone in skeleton.bones:
-            from_item = self.joint_items.get(bone.from_joint_id)
-            to_item = self.joint_items.get(bone.to_joint_id)
+            from_joint_item = self.joint_items.get(bone.from_joint_id)
+            to_joint_item = self.joint_items.get(bone.to_joint_id)
             
-            if from_item and to_item:
-                bone_item = BoneItem(from_item, to_item)
+            if from_joint_item and to_joint_item:
+                bone_item = BoneItem(from_joint_item, to_joint_item)
                 self.scene.addItem(bone_item)
                 self.bone_items.append(bone_item)
         
-        # Add contours
+        # Создаём элементы для контуров
         for contour in skeleton.contours:
             item = ContourItem(contour)
             self.scene.addItem(item)
             self.contour_items.append(item)
         
-        # Fit view
-        self._fit_view()
+        # Обновляем вид
+        self.fit_to_contents()
+    
+    def clear(self) -> None:
+        """Очищаем вид"""
+        self.scene.clear()
+        self.joint_items.clear()
+        self.bone_items.clear()
+        self.contour_items.clear()
+        self.reference_contour_items.clear()
     
     def set_reference_contours(self, contours: List[Contour]) -> None:
-        """Set reference contours from vectorizer"""
-        # Clear existing reference contours
+        """Устанавливаем референсные контуры"""
+        # Удаляем старые референсные контуры
         for item in self.reference_contour_items:
             self.scene.removeItem(item)
-        self.reference_contour_items = []
+        self.reference_contour_items.clear()
         
-        if not contours:
-            return
-        
-        # Add reference contours
-        pen = QPen(QColor(255, 255, 255, 60), 1)
-        pen.setStyle(Qt.PenStyle.DashLine)
-        
+        # Добавляем новые референсные контуры
         for contour in contours:
             path = QPainterPath()
             if contour.points:
-                path.moveTo(QPointF(contour.points[0][0], -contour.points[0][1]))
+                path.moveTo(QPointF(contour.points[0][0], contour.points[0][1]))
                 for x, y in contour.points[1:]:
-                    path.lineTo(QPointF(x, -y))
+                    path.lineTo(QPointF(x, y))
                 if contour.is_closed:
                     path.closeSubpath()
             
             item = QGraphicsPathItem(path)
-            item.setPen(pen)
-            item.setZValue(-2)
+            item.setPen(QPen(QColor(255, 255, 255, 100), 1, Qt.PenStyle.DashLine))
             self.scene.addItem(item)
             self.reference_contour_items.append(item)
     
-    def _clear_items(self) -> None:
-        """Clear all items from scene"""
-        # Clear joint items
-        for item in self.joint_items.values():
-            self.scene.removeItem(item)
-        self.joint_items.clear()
-        
-        # Clear bone items
-        for item in self.bone_items:
-            self.scene.removeItem(item)
-        self.bone_items = []
-        
-        # Clear contour items
-        for item in self.contour_items:
-            self.scene.removeItem(item)
-        self.contour_items = []
-        
-        # Clear reference contours
-        for item in self.reference_contour_items:
-            self.scene.removeItem(item)
-        self.reference_contour_items = []
+    def fit_to_contents(self) -> None:
+        """Подгоняем вид под содержимое"""
+        if self.scene.items():
+            self.scene.setSceneRect(self.scene.itemsBoundingRect())
+            self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
     
-    def _fit_view(self) -> None:
-        """Fit view to all items"""
-        if not self.joint_items:
-            self.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
-            return
-        
-        # Find bounds of all joints
-        min_x = float('inf')
-        max_x = float('-inf')
-        min_y = float('inf')
-        max_y = float('-inf')
-        
-        for item in self.joint_items.values():
-            pos = item.pos()
-            min_x = min(min_x, pos.x() - item.radius)
-            max_x = max(max_x, pos.x() + item.radius)
-            min_y = min(min_y, pos.y() - item.radius)
-            max_y = max(max_y, pos.y() + item.radius)
-        
-        # Add padding
-        padding = 50
-        min_x -= padding
-        max_x += padding
-        min_y -= padding
-        max_y += padding
-        
-        # Fit view
-        self.fitInView(QRectF(min_x, min_y, max_x - min_x, max_y - min_y), Qt.AspectRatioMode.KeepAspectRatio)
+    def set_zoom(self, zoom: float) -> None:
+        """Устанавливаем масштаб"""
+        self._zoom = zoom
+        self.resetTransform()
+        self.scale(zoom, zoom)
     
-    def add_joint(self, joint: Joint) -> JointItem:
-        """Add a joint to the scene"""
-        item = JointItem(joint)
-        item.setPos(joint.x, -joint.y)
-        self.scene.addItem(item)
-        self.joint_items[joint.id] = item
-        return item
-    
-    def remove_joint(self, joint_id: str) -> None:
-        """Remove a joint from the scene"""
-        if joint_id in self.joint_items:
-            item = self.joint_items[joint_id]
-            self.scene.removeItem(item)
-            del self.joint_items[joint_id]
-    
-    def update_joint(self, joint: Joint) -> None:
-        """Update a joint in the scene"""
-        if joint.id in self.joint_items:
-            item = self.joint_items[joint.id]
-            item.joint = joint
-            item.setPos(joint.x, -joint.y)
-            item._update_brush()
-    
-    def refresh_bones(self, bones: List[Any]) -> None:
-        """Refresh bone display"""
-        # Clear existing bones
-        for item in self.bone_items:
-            self.scene.removeItem(item)
-        self.bone_items = []
-        
-        # Add new bones
-        for bone in bones:
-            from_item = self.joint_items.get(bone.from_joint_id)
-            to_item = self.joint_items.get(bone.to_joint_id)
-            
-            if from_item and to_item:
-                bone_item = BoneItem(from_item, to_item)
-                self.scene.addItem(bone_item)
-                self.bone_items.append(bone_item)
-    
-    def set_show_grid(self, show: bool) -> None:
-        """Show or hide grid"""
-        self._show_grid = show
-        self._clear_items()
-        self._setup_scene()
-        # Re-add skeleton
-        # This would be handled by the parent
-    
-    def wheelEvent(self, event) -> None:
-        """Handle wheel event for zooming"""
-        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-            # Zoom
-            zoom_factor = 1.1 if event.angleDelta().y() > 0 else 0.9
-            self.scale(zoom_factor, zoom_factor)
-            event.accept()
-        else:
-            super().wheelEvent(event)
+    def set_pan(self, pan: QPointF) -> None:
+        """Устанавливаем смещение"""
+        self._pan = pan
+        self.resetTransform()
+        self.translate(pan.x(), pan.y())
+        self.scale(self._zoom, self._zoom)
     
     def mousePressEvent(self, event) -> None:
-        """Handle mouse press"""
+        """Обработка нажатия мыши"""
         if event.button() == Qt.MouseButton.MiddleButton:
-            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            self._last_pan_pos = event.position().toPointF()
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
-            event.accept()
-        else:
-            super().mousePressEvent(event)
+        super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event) -> None:
+        """Обработка движения мыши"""
+        if hasattr(self, '_last_pan_pos'):
+            delta = event.position().toPointF() - self._last_pan_pos
+            self._pan += delta
+            self.set_pan(self._pan)
+            self._last_pan_pos = event.position().toPointF()
+        super().mouseMoveEvent(event)
     
     def mouseReleaseEvent(self, event) -> None:
-        """Handle mouse release"""
+        """Обработка отпускания мыши"""
         if event.button() == Qt.MouseButton.MiddleButton:
-            self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+            if hasattr(self, '_last_pan_pos'):
+                del self._last_pan_pos
             self.setCursor(Qt.CursorShape.ArrowCursor)
-            event.accept()
-        else:
-            super().mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
+    
+    def wheelEvent(self, event) -> None:
+        """Обработка колесика мыши"""
+        zoom_factor = 1.1 if event.angleDelta().y() > 0 else 0.9
+        self._zoom *= zoom_factor
+        self.set_zoom(self._zoom)
+        event.accept()
 
 
 class SkeletonTab(QWidget):
-    """Tab for building and editing skeletons"""
+    """Вкладка для создания и редактирования скелета"""
     
-    # Signals
+    # Сигналы
     skeleton_loaded = Signal(int)
     skeleton_created = Signal(int)
     
@@ -417,419 +289,243 @@ class SkeletonTab(QWidget):
         super().__init__(parent)
         
         self.skeleton = Skeleton()
-        self._history: List[Skeleton] = []
+        self._history: List[Dict[str, Any]] = []
         self._history_index: int = -1
-        self._reference_contours: List[Contour] = []
+        self._selected_joint: Optional[JointItem] = None
         
         self._setup_ui()
         self._connect_signals()
     
     def _setup_ui(self) -> None:
-        """Setup the user interface"""
+        """Настройка пользовательского интерфейса"""
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.setSpacing(8)
         
-        # Create splitter
+        # Создаём разделитель
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setHandleWidth(8)
         splitter.setStyleSheet("QSplitter::handle { background-color: #1e2833; }")
         
-        # Left panel - Skeleton view
+        # Левая панель - Панель инструментов
         left_panel = QFrame()
         left_panel.setStyleSheet("background-color: #10151c; border: 1px solid #1e2833; border-radius: 6px;")
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(8, 8, 8, 8)
         left_layout.setSpacing(6)
         
-        # Skeleton view
-        self.skeleton_view = SkeletonView()
-        left_layout.addWidget(QLabel("Skeleton View"))
-        left_layout.addWidget(self.skeleton_view)
+        # Группа Скелет
+        skeleton_group = QGroupBox("Скелет")
+        skeleton_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
+        skeleton_layout = QVBoxLayout()
         
-        # View controls
-        view_controls = QHBoxLayout()
-        self.btn_zoom_in = QPushButton("+")
-        self.btn_zoom_in.setFixedSize(30, 30)
-        self.btn_zoom_in.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; }")
-        self.btn_zoom_out = QPushButton("-")
-        self.btn_zoom_out.setFixedSize(30, 30)
-        self.btn_zoom_out.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; }")
-        self.btn_fit = QPushButton("Fit")
-        self.btn_fit.setFixedSize(50, 30)
-        self.btn_fit.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; }")
-        view_controls.addWidget(self.btn_zoom_in)
-        view_controls.addWidget(self.btn_zoom_out)
-        view_controls.addWidget(self.btn_fit)
-        left_layout.addLayout(view_controls)
+        # Кнопки создания скелета
+        self.btn_t_pose = QPushButton("Создать T-Pose")
+        self.btn_t_pose.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 8px 16px; }")
+        skeleton_layout.addWidget(self.btn_t_pose)
         
-        splitter.addWidget(left_panel)
+        self.btn_a_pose = QPushButton("Создать A-Pose")
+        self.btn_a_pose.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 8px 16px; }")
+        skeleton_layout.addWidget(self.btn_a_pose)
         
-        # Right panel - Controls
+        self.btn_clear = QPushButton("Очистить скелет")
+        self.btn_clear.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 8px 16px; }")
+        skeleton_layout.addWidget(self.btn_clear)
+        
+        skeleton_group.setLayout(skeleton_layout)
+        left_layout.addWidget(skeleton_group)
+        
+        # Группа Параметры
+        params_group = QGroupBox("Параметры")
+        params_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
+        params_layout = QVBoxLayout()
+        
+        # Высота персонажа
+        height_layout = QHBoxLayout()
+        height_layout.addWidget(QLabel("Высота (см):"))
+        self.spin_height = QSpinBox()
+        self.spin_height.setRange(100, 300)
+        self.spin_height.setValue(180)
+        self.spin_height.setStyleSheet("QSpinBox { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 4px 8px; }")
+        height_layout.addWidget(self.spin_height)
+        params_layout.addLayout(height_layout)
+        
+        # Зеркальная симметрия
+        self.chk_mirror = QCheckBox("Зеркальная симметрия")
+        self.chk_mirror.setChecked(True)
+        self.chk_mirror.setStyleSheet("QCheckBox { color: #d7e0ea; }")
+        params_layout.addWidget(self.chk_mirror)
+        
+        # Определение пола
+        floor_layout = QHBoxLayout()
+        floor_layout.addWidget(QLabel("Определять пол по:"))
+        self.combo_floor = QComboBox()
+        self.combo_floor.addItems(["Toe_L", "Toe_R", "Ankle_L", "Ankle_R"])
+        self.combo_floor.setStyleSheet("QComboBox { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 4px 8px; }")
+        floor_layout.addWidget(self.combo_floor)
+        params_layout.addLayout(floor_layout)
+        
+        params_group.setLayout(params_layout)
+        left_layout.addWidget(params_group)
+        
+        # Группа Загрузка/Сохранение
+        io_group = QGroupBox("Загрузка/Сохранение")
+        io_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
+        io_layout = QVBoxLayout()
+        
+        self.btn_load = QPushButton("Загрузить скелет...")
+        self.btn_load.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 8px 16px; }")
+        io_layout.addWidget(self.btn_load)
+        
+        self.btn_save = QPushButton("Сохранить скелет...")
+        self.btn_save.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 8px 16px; }")
+        io_layout.addWidget(self.btn_save)
+        
+        io_group.setLayout(io_layout)
+        left_layout.addWidget(io_group)
+        
+        # Статистика
+        self.lbl_stats = QLabel("Суставы: 0 | Кости: 0 | Контуры: 0")
+        self.lbl_stats.setStyleSheet("color: #7c8b9d; font: 10px 'Consolas';")
+        left_layout.addWidget(self.lbl_stats)
+        
+        left_layout.addStretch()
+        
+        # Правая панель - Вид скелета
         right_panel = QFrame()
         right_panel.setStyleSheet("background-color: #10151c; border: 1px solid #1e2833; border-radius: 6px;")
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(8, 8, 8, 8)
         right_layout.setSpacing(6)
         
-        # Presets
-        preset_group = QGroupBox("Presets")
-        preset_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
-        preset_layout = QHBoxLayout()
+        right_layout.addWidget(QLabel("Вид скелета"))
+        self.skeleton_view = SkeletonView()
+        right_layout.addWidget(self.skeleton_view)
         
-        self.btn_t_pose = QPushButton("T-Pose")
-        self.btn_t_pose.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(34, 211, 238, 0.12);
-                color: #22d3ee;
-                border: 1px solid rgba(34, 211, 238, 0.55);
-                border-radius: 6px;
-                padding: 8px 16px;
-            }
-        """)
-        self.btn_a_pose = QPushButton("A-Pose")
-        self.btn_a_pose.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(34, 211, 238, 0.12);
-                color: #22d3ee;
-                border: 1px solid rgba(34, 211, 238, 0.55);
-                border-radius: 6px;
-                padding: 8px 16px;
-            }
-        """)
-        preset_layout.addWidget(self.btn_t_pose)
-        preset_layout.addWidget(self.btn_a_pose)
-        preset_group.setLayout(preset_layout)
-        right_layout.addWidget(preset_group)
-        
-        # Joint tools
-        joint_group = QGroupBox("Joint Tools")
-        joint_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
-        joint_layout = QVBoxLayout()
-        
-        self.btn_add_joint = QPushButton("Add Joint")
-        self.btn_add_joint.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_remove_joint = QPushButton("Remove Selected")
-        self.btn_remove_joint.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_connect = QPushButton("Connect Joints")
-        self.btn_connect.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        
-        joint_layout.addWidget(self.btn_add_joint)
-        joint_layout.addWidget(self.btn_remove_joint)
-        joint_layout.addWidget(self.btn_connect)
-        
-        # Mirror tools
-        mirror_layout = QHBoxLayout()
-        self.btn_mirror_x = QPushButton("Mirror X")
-        self.btn_mirror_x.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_mirror_y = QPushButton("Mirror Y")
-        self.btn_mirror_y.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        mirror_layout.addWidget(self.btn_mirror_x)
-        mirror_layout.addWidget(self.btn_mirror_y)
-        joint_layout.addLayout(mirror_layout)
-        
-        joint_group.setLayout(joint_layout)
-        right_layout.addWidget(joint_group)
-        
-        # Skeleton settings
-        settings_group = QGroupBox("Skeleton Settings")
-        settings_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
-        settings_layout = QVBoxLayout()
-        
-        # Height
-        height_layout = QHBoxLayout()
-        height_layout.addWidget(QLabel("Height (cm):"))
-        self.spin_height = QDoubleSpinBox()
-        self.spin_height.setRange(50, 300)
-        self.spin_height.setValue(180)
-        self.spin_height.setSingleStep(1)
-        self.spin_height.setStyleSheet("QDoubleSpinBox { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 4px 8px; }")
-        height_layout.addWidget(self.spin_height)
-        settings_layout.addLayout(height_layout)
-        
-        # Symmetry
-        symmetry_layout = QHBoxLayout()
-        self.chk_mirror_symmetry = QCheckBox("Mirror Symmetry")
-        self.chk_mirror_symmetry.setChecked(True)
-        self.chk_mirror_symmetry.setStyleSheet("QCheckBox { color: #d7e0ea; spacing: 8px; }")
-        symmetry_layout.addWidget(self.chk_mirror_symmetry)
-        settings_layout.addLayout(symmetry_layout)
-        
-        # Floor settings
-        floor_layout = QHBoxLayout()
-        floor_layout.addWidget(QLabel("Floor Joint:"))
-        self.combo_floor = QComboBox()
-        self.combo_floor.setStyleSheet("QComboBox { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 4px 8px; }")
-        floor_layout.addWidget(self.combo_floor)
-        settings_layout.addLayout(floor_layout)
-        
-        settings_group.setLayout(settings_layout)
-        right_layout.addWidget(settings_group)
-        
-        # Load/Save
-        io_group = QGroupBox("File")
-        io_group.setStyleSheet("QGroupBox { border: 1px solid #1e2833; border-radius: 6px; padding: 8px; }")
-        io_layout = QHBoxLayout()
-        
-        self.btn_load_skeleton = QPushButton("Load Skeleton")
-        self.btn_load_skeleton.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_save_skeleton = QPushButton("Save Skeleton")
-        self.btn_save_skeleton.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_export_json = QPushButton("Export JSON")
-        self.btn_export_json.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        
-        io_layout.addWidget(self.btn_load_skeleton)
-        io_layout.addWidget(self.btn_save_skeleton)
-        io_layout.addWidget(self.btn_export_json)
-        io_group.setLayout(io_layout)
-        right_layout.addWidget(io_group)
-        
-        # Stats
-        self.lbl_stats = QLabel("Joints: 0 | Bones: 0")
-        self.lbl_stats.setStyleSheet("color: #7c8b9d; font: 11px 'Consolas';")
-        right_layout.addWidget(self.lbl_stats)
-        
-        # Action buttons
-        action_layout = QHBoxLayout()
-        self.btn_clear = QPushButton("Clear All")
-        self.btn_clear.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_generate_bones = QPushButton("Generate Bones")
-        self.btn_generate_bones.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(52, 211, 153, 0.12);
-                color: #34d399;
-                border: 1px solid rgba(52, 211, 153, 0.55);
-                border-radius: 4px;
-                padding: 6px 12px;
-            }
-        """)
-        self.btn_send_to_workbench = QPushButton("Send to Workbench")
-        self.btn_send_to_workbench.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(34, 211, 238, 0.12);
-                color: #22d3ee;
-                border: 1px solid rgba(34, 211, 238, 0.55);
-                border-radius: 4px;
-                padding: 6px 12px;
-            }
-        """)
-        action_layout.addWidget(self.btn_clear)
-        action_layout.addWidget(self.btn_generate_bones)
-        action_layout.addWidget(self.btn_send_to_workbench)
-        right_layout.addLayout(action_layout)
-        
-        # Undo/Redo
-        undo_layout = QHBoxLayout()
-        self.btn_undo = QPushButton("Undo")
-        self.btn_undo.setShortcut("Ctrl+Z")
-        self.btn_undo.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        self.btn_redo = QPushButton("Redo")
-        self.btn_redo.setShortcut("Ctrl+Y")
-        self.btn_redo.setStyleSheet("QPushButton { background-color: #141b24; color: #d7e0ea; border: 1px solid #1e2833; border-radius: 4px; padding: 6px 12px; }")
-        undo_layout.addWidget(self.btn_undo)
-        undo_layout.addWidget(self.btn_redo)
-        right_layout.addLayout(undo_layout)
-        
-        # Add stretch
-        right_layout.addStretch()
-        
+        # Добавляем панели в разделитель
+        splitter.addWidget(left_panel)
         splitter.addWidget(right_panel)
-        splitter.setSizes([500, 300])
+        splitter.setSizes([300, 600])
         
         main_layout.addWidget(splitter)
-        
-        # Update floor combo
-        self._update_floor_combo()
+        self.setLayout(main_layout)
     
     def _connect_signals(self) -> None:
-        """Connect signals"""
-        # Presets
+        """Подключаем сигналы"""
         self.btn_t_pose.clicked.connect(self.create_preset_t_pose)
         self.btn_a_pose.clicked.connect(self.create_preset_a_pose)
-        
-        # Joint tools
-        self.btn_add_joint.clicked.connect(self.on_add_joint)
-        self.btn_remove_joint.clicked.connect(self.on_remove_joint)
-        self.btn_connect.clicked.connect(self.on_connect_joints)
-        self.btn_mirror_x.clicked.connect(self.on_mirror_x)
-        self.btn_mirror_y.clicked.connect(self.on_mirror_y)
-        
-        # View controls
-        self.btn_zoom_in.clicked.connect(self.on_zoom_in)
-        self.btn_zoom_out.clicked.connect(self.on_zoom_out)
-        self.btn_fit.clicked.connect(self.on_fit_view)
-        
-        # Settings
-        self.spin_height.valueChanged.connect(self.on_height_changed)
-        self.chk_mirror_symmetry.stateChanged.connect(self.on_symmetry_changed)
-        self.combo_floor.currentTextChanged.connect(self.on_floor_changed)
-        
-        # File
-        self.btn_load_skeleton.clicked.connect(self.on_load_skeleton)
-        self.btn_save_skeleton.clicked.connect(self.on_save_skeleton)
-        self.btn_export_json.clicked.connect(self.on_export_json)
-        
-        # Actions
         self.btn_clear.clicked.connect(self.clear_all)
-        self.btn_generate_bones.clicked.connect(self.on_generate_bones)
-        self.btn_send_to_workbench.clicked.connect(self.on_send_to_workbench)
+        self.btn_load.clicked.connect(self.on_load_skeleton)
+        self.btn_save.clicked.connect(self.on_save_skeleton)
         
-        # Undo/Redo
-        self.btn_undo.clicked.connect(self.undo)
-        self.btn_redo.clicked.connect(self.redo)
+        # Обновляем параметры
+        self.spin_height.valueChanged.connect(self._update_parameters)
+        self.chk_mirror.stateChanged.connect(self._update_parameters)
+        self.combo_floor.currentTextChanged.connect(self._update_parameters)
+    
+    def _update_parameters(self) -> None:
+        """Обновляем параметры скелета"""
+        self.skeleton.parameters['target_height_cm'] = self.spin_height.value()
+        self.skeleton.parameters['mirror_symmetry'] = self.chk_mirror.isChecked()
+        self.skeleton.parameters['floor_by_joint'] = self.combo_floor.currentText()
+        
+        # Обновляем отображение
+        self._update_stats()
+    
+    def _update_stats(self) -> None:
+        """Обновляем статистику"""
+        self.lbl_stats.setText(
+            f"Суставы: {self.skeleton.get_joint_count()} | "
+            f"Кости: {self.skeleton.get_bone_count()} | "
+            f"Контуры: {len(self.skeleton.contours)}"
+        )
     
     def set_reference_contours(self, contours: List[Contour]) -> None:
-        """Set reference contours from vectorizer"""
-        self._reference_contours = contours
+        """Устанавливаем референсные контуры"""
         self.skeleton_view.set_reference_contours(contours)
     
+    def set_skeleton(self, skeleton: Skeleton) -> None:
+        """Устанавливаем скелет"""
+        self.skeleton = skeleton
+        self.skeleton_view.set_skeleton(skeleton)
+        self._update_parameters_from_skeleton()
+        self._update_stats()
+    
+    def get_skeleton(self) -> Skeleton:
+        """Получаем текущий скелет"""
+        return self.skeleton
+    
+    def _update_parameters_from_skeleton(self) -> None:
+        """Обновляем параметры из скелета"""
+        self.spin_height.setValue(self.skeleton.parameters.get('target_height_cm', 180))
+        self.chk_mirror.setChecked(self.skeleton.parameters.get('mirror_symmetry', True))
+        self.combo_floor.setCurrentText(self.skeleton.parameters.get('floor_by_joint', 'Toe_L'))
+    
     def create_preset_t_pose(self) -> None:
-        """Create a T-pose skeleton"""
+        """Создаём скелет в T-Pose"""
         self.skeleton.create_preset_t_pose()
         self.skeleton_view.set_skeleton(self.skeleton)
         self._update_stats()
-        self._update_floor_combo()
-        self._save_state("Create T-pose")
+        self._save_state(f"Создан T-Pose скелет")
         self.skeleton_created.emit(self.skeleton.get_joint_count())
     
     def create_preset_a_pose(self) -> None:
-        """Create an A-pose skeleton"""
+        """Создаём скелет в A-Pose"""
         self.skeleton.create_preset_a_pose()
         self.skeleton_view.set_skeleton(self.skeleton)
         self._update_stats()
-        self._update_floor_combo()
-        self._save_state("Create A-pose")
+        self._save_state(f"Создан A-Pose скелет")
         self.skeleton_created.emit(self.skeleton.get_joint_count())
     
-    def on_add_joint(self) -> None:
-        """Handle add joint button"""
-        # Create a new joint at origin
-        joint_id = f"j{self.skeleton._next_id}"
-        self.skeleton._next_id += 1
+    def _save_state(self, description: str = "") -> None:
+        """Сохраняем состояние в историю"""
+        state = self.skeleton.to_dict()
+        # Очищаем кости из истории для экономии места
+        state['skeleton3D']['bones'] = []
         
-        joint = Joint(
-            id=joint_id,
-            name=f"Joint_{joint_id}",
-            role=JointRole.OTHER,
-            parent_id=None,
-            pair_id=None,
-            x=0,
-            y=0,
-            nx=0,
-            ny=0
-        )
-        
-        self.skeleton.add_joint(joint)
-        self.skeleton_view.add_joint(joint)
-        self._update_stats()
-        self._update_floor_combo()
-        self._save_state("Add joint")
+        self._history = self._history[:self._history_index + 1]
+        self._history.append(state)
+        self._history_index = len(self._history) - 1
     
-    def on_remove_joint(self) -> None:
-        """Handle remove joint button"""
-        # For now, remove last joint
-        if self.skeleton.joints:
-            joint_id = list(self.skeleton.joints.keys())[-1]
-            self.skeleton.remove_joint(joint_id)
-            self.skeleton_view.remove_joint(joint_id)
+    def undo(self) -> bool:
+        """Отменяем последнее действие"""
+        if self._history_index > 0:
+            self._history_index -= 1
+            self.skeleton.from_dict(self._history[self._history_index])
+            self.skeleton_view.set_skeleton(self.skeleton)
             self._update_stats()
-            self._update_floor_combo()
-            self._save_state("Remove joint")
+            return True
+        return False
     
-    def on_connect_joints(self) -> None:
-        """Handle connect joints button"""
-        # For now, just regenerate bones
-        self.on_generate_bones()
-    
-    def on_mirror_x(self) -> None:
-        """Handle mirror X button"""
-        # Mirror all joints across X axis
-        for joint in self.skeleton.joints.values():
-            joint.x = -joint.x
-            self.skeleton_view.update_joint(joint)
-        
-        self._update_stats()
-        self._save_state("Mirror X")
-    
-    def on_mirror_y(self) -> None:
-        """Handle mirror Y button"""
-        # Mirror all joints across Y axis
-        for joint in self.skeleton.joints.values():
-            joint.y = -joint.y
-            self.skeleton_view.update_joint(joint)
-        
-        self._update_stats()
-        self._save_state("Mirror Y")
-    
-    def on_zoom_in(self) -> None:
-        """Handle zoom in button"""
-        self.skeleton_view.scale(1.2, 1.2)
-    
-    def on_zoom_out(self) -> None:
-        """Handle zoom out button"""
-        self.skeleton_view.scale(0.8, 0.8)
-    
-    def on_fit_view(self) -> None:
-        """Handle fit view button"""
-        self.skeleton_view._fit_view()
-    
-    def on_height_changed(self, value: float) -> None:
-        """Handle height change"""
-        self.skeleton.parameters['target_height_cm'] = value
-    
-    def on_symmetry_changed(self, state: int) -> None:
-        """Handle symmetry toggle"""
-        self.skeleton.parameters['mirror_symmetry'] = (state == Qt.CheckState.Checked)
-    
-    def on_floor_changed(self, text: str) -> None:
-        """Handle floor joint change"""
-        self.skeleton.parameters['floor_by_joint'] = text
-    
-    def on_generate_bones(self) -> None:
-        """Handle generate bones button"""
-        self.skeleton.generate_bones()
-        self.skeleton_view.refresh_bones(self.skeleton.bones)
-        self._update_stats()
-        self._save_state("Generate bones")
-    
-    def on_send_to_workbench(self) -> None:
-        """Handle send to workbench button"""
-        self.skeleton_created.emit(self.skeleton.get_joint_count())
-    
-    def _update_stats(self) -> None:
-        """Update statistics display"""
-        self.lbl_stats.setText(f"Joints: {self.skeleton.get_joint_count()} | Bones: {self.skeleton.get_bone_count()}")
-    
-    def _update_floor_combo(self) -> None:
-        """Update floor joint combo box"""
-        self.combo_floor.clear()
-        for joint in self.skeleton.joints.values():
-            self.combo_floor.addItem(joint.name)
-        
-        # Set current floor joint
-        floor_joint = self.skeleton.parameters.get('floor_by_joint', 'Toe_L')
-        if floor_joint in [j.name for j in self.skeleton.joints.values()]:
-            self.combo_floor.setCurrentText(floor_joint)
+    def redo(self) -> bool:
+        """Возвращаем отменённое действие"""
+        if self._history_index < len(self._history) - 1:
+            self._history_index += 1
+            self.skeleton.from_dict(self._history[self._history_index])
+            self.skeleton_view.set_skeleton(self.skeleton)
+            self._update_stats()
+            return True
+        return False
     
     def load_skeleton_from_file(self, path: str) -> bool:
-        """Load skeleton from JSON file"""
+        """Загружаем скелет из файла"""
         skeleton = Skeleton.load_from_file(path)
         if skeleton:
             self.skeleton = skeleton
             self.skeleton_view.set_skeleton(skeleton)
+            self._update_parameters_from_skeleton()
             self._update_stats()
-            self._update_floor_combo()
-            self._save_state(f"Load skeleton from {path}")
+            self._save_state(f"Загружен скелет из {path}")
             self.skeleton_loaded.emit(self.skeleton.get_joint_count())
             return True
         return False
     
     def on_load_skeleton(self) -> None:
-        """Handle load skeleton button"""
+        """Обработка загрузки скелета"""
         options = QFileDialog.Options()
         file, _ = QFileDialog.getOpenFileName(
-            self, "Load Skeleton", "",
-            "JSON Files (*.json);;All Files (*)",
+            self, "Загрузить скелет", "",
+            "JSON файлы (*.json);;Все файлы (*)",
             options=options
         )
         
@@ -837,77 +533,37 @@ class SkeletonTab(QWidget):
             self.load_skeleton_from_file(file)
     
     def on_save_skeleton(self) -> None:
-        """Handle save skeleton button"""
+        """Обработка сохранения скелета"""
         options = QFileDialog.Options()
         file, _ = QFileDialog.getSaveFileName(
-            self, "Save Skeleton", "",
-            "JSON Files (*.json);;All Files (*)",
+            self, "Сохранить скелет", "",
+            "JSON файлы (*.json);;Все файлы (*)",
             options=options
         )
         
         if file:
-            if self.skeleton.save_to_file(file):
-                QMessageBox.information(self, "Saved", f"Skeleton saved to {file}")
-                self._save_state(f"Save skeleton to {file}")
-    
-    def on_export_json(self) -> None:
-        """Handle export JSON button"""
-        self.on_save_skeleton()
-    
-    def get_skeleton(self) -> Skeleton:
-        """Get current skeleton"""
-        return self.skeleton
-    
-    def _save_state(self, description: str = "") -> None:
-        """Save current state to history"""
-        # Save current skeleton
-        current_skeleton = Skeleton()
-        current_skeleton.from_dict(self.skeleton.to_dict())
-        
-        # Trim history
-        if len(self._history) > self._history_index + 1:
-            self._history = self._history[:self._history_index + 1]
-        
-        self._history.append(current_skeleton)
-        self._history_index = len(self._history) - 1
-    
-    def undo(self) -> None:
-        """Undo last action"""
-        if self._history_index > 0:
-            self._history_index -= 1
-            self.skeleton = self._history[self._history_index]
-            self.skeleton_view.set_skeleton(self.skeleton)
-            self._update_stats()
-            self._update_floor_combo()
-    
-    def redo(self) -> None:
-        """Redo last undone action"""
-        if self._history_index < len(self._history) - 1:
-            self._history_index += 1
-            self.skeleton = self._history[self._history_index]
-            self.skeleton_view.set_skeleton(self.skeleton)
-            self._update_stats()
-            self._update_floor_combo()
+            self.skeleton.save_to_file(file)
+            self.set_status(f"Скелет сохранён в {file}")
     
     def clear_all(self) -> None:
-        """Clear all data"""
+        """Очищаем всё"""
         self.skeleton.clear()
-        self.skeleton_view._clear_items()
+        self.skeleton_view.clear()
         self._history = []
         self._history_index = -1
         self._update_stats()
-        self._update_floor_combo()
     
-    def keyPressEvent(self, event) -> None:
-        """Handle key press events"""
-        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-            if event.key() == Qt.Key.Key_Z:
-                self.undo()
-                event.accept()
-                return
-            elif event.key() == Qt.Key.Key_Y:
-                self.redo()
-                event.accept()
-                return
-        
-        super().keyPressEvent(event)
+    def set_status(self, message: str) -> None:
+        """Устанавливаем сообщение в строке состояния"""
+        # Это будет обрабатываться в главном окне
+        pass
+
+
+if __name__ == "__main__":
+    from PySide6.QtWidgets import QApplication
+    import sys
+    
+    app = QApplication(sys.argv)
+    tab = SkeletonTab()
+    tab.show()
+    sys.exit(app.exec())

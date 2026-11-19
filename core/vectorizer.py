@@ -1,28 +1,49 @@
 """
-Vectorizer module for converting raster images to vector contours
+Модуль векторизации для преобразования растровых изображений в векторные контуры
 """
 
-import cv2
 import numpy as np
-from scipy import ndimage
-from skimage.measure import find_contours, approximate_polygon
 from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass, field
 from pathlib import Path
 from PIL import Image
 import io
 
+# Пробуем импортировать OpenCV
+try:
+    import cv2
+    CV_AVAILABLE = True
+except ImportError:
+    CV_AVAILABLE = False
+    print("Warning: OpenCV not available, using PIL fallback")
+
+# Пробуем импортировать scipy
+try:
+    from scipy import ndimage
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+    print("Warning: scipy not available")
+
+# Пробуем импортировать skimage
+try:
+    from skimage.measure import find_contours, approximate_polygon
+    SKIMAGE_AVAILABLE = True
+except ImportError:
+    SKIMAGE_AVAILABLE = False
+    print("Warning: scikit-image not available")
+
 
 @dataclass
 class Contour:
-    """Represents a vector contour with points and metadata"""
-    points: List[Tuple[float, float]]  # List of (x, y) points
+    """Представляет векторный контур с точками и метаданными"""
+    points: List[Tuple[float, float]]  # Список точек (x, y)
     is_closed: bool = True
     is_external: bool = True
     color: Tuple[int, int, int] = (255, 255, 255)
     
     def to_svg_path(self) -> str:
-        """Convert contour to SVG path string"""
+        """Преобразовать контур в SVG путь"""
         if len(self.points) < 2:
             return ""
         
@@ -40,27 +61,35 @@ class Contour:
         return " ".join(parts)
     
     def to_numpy(self) -> np.ndarray:
-        """Convert to numpy array of shape (N, 2)"""
+        """Преобразовать в numpy массив формы (N, 2)"""
         return np.array(self.points, dtype=np.float32)
     
     def simplify(self, epsilon: float = 1.0) -> 'Contour':
-        """Simplify contour using Ramer-Douglas-Peucker algorithm"""
+        """Упростить контур с использованием алгоритма Рамера-Дугласа-Пекера"""
         if len(self.points) < 3:
             return self
         
-        # Convert to numpy and simplify
-        pts = self.to_numpy()
-        simplified = approximate_polygon(pts, tolerance=epsilon)
-        
-        return Contour(
-            points=[(float(p[0]), float(p[1])) for p in simplified],
-            is_closed=self.is_closed,
-            is_external=self.is_external,
-            color=self.color
-        )
+        if SKIMAGE_AVAILABLE:
+            pts = self.to_numpy()
+            simplified = approximate_polygon(pts, tolerance=epsilon)
+            return Contour(
+                points=[(float(p[0]), float(p[1])) for p in simplified],
+                is_closed=self.is_closed,
+                is_external=self.is_external,
+                color=self.color
+            )
+        else:
+            # Фоллбэк: упрощение путём удаления каждых вторых точек
+            simplified = [self.points[i] for i in range(0, len(self.points), max(1, int(epsilon)))]
+            return Contour(
+                points=simplified,
+                is_closed=self.is_closed,
+                is_external=self.is_external,
+                color=self.color
+            )
     
     def translate(self, dx: float, dy: float) -> 'Contour':
-        """Translate contour by dx, dy"""
+        """Сдвинуть контур на dx, dy"""
         return Contour(
             points=[(x + dx, y + dy) for x, y in self.points],
             is_closed=self.is_closed,
@@ -69,37 +98,45 @@ class Contour:
         )
     
     def scale(self, sx: float, sy: float) -> 'Contour':
-        """Scale contour"""
+        """Масштабировать контур"""
         return Contour(
             points=[(x * sx, y * sy) for x, y in self.points],
             is_closed=self.is_closed,
             is_external=self.is_external,
             color=self.color
         )
+    
+    def get_bounding_box(self) -> Tuple[float, float, float, float]:
+        """Получить ограничивающий прямоугольник"""
+        if not self.points:
+            return (0, 0, 0, 0)
+        xs = [p[0] for p in self.points]
+        ys = [p[1] for p in self.points]
+        return (min(xs), min(ys), max(xs), max(ys))
 
 
 @dataclass
 class ROI:
-    """Region of Interest for cropping"""
+    """Область интереса для обрезки"""
     x: float
     y: float
     width: float
     height: float
     
     def to_slice(self) -> Tuple[slice, slice]:
-        """Convert to numpy slice objects"""
+        """Преобразовать в срезы numpy"""
         return (slice(int(self.y), int(self.y + self.height)), 
                 slice(int(self.x), int(self.x + self.width)))
     
     def contains(self, x: float, y: float) -> bool:
-        """Check if point is inside ROI"""
+        """Проверить, находится ли точка внутри ROI"""
         return (self.x <= x <= self.x + self.width and 
                 self.y <= y <= self.y + self.height)
 
 
 class Vectorizer:
     """
-    Main vectorizer class for converting raster images to vector contours
+    Главный класс векторизатора для преобразования растровых изображений в векторные контуры
     """
     
     def __init__(self):
@@ -107,6 +144,7 @@ class Vectorizer:
         self._original_image: Optional[np.ndarray] = None
         self._roi: Optional[ROI] = None
         self._contours: List[Contour] = []
+        self._test_images: List[str] = []
         self._parameters: Dict[str, Any] = {
             'blur_radius': 3,
             'canny_threshold1': 50,
@@ -120,23 +158,30 @@ class Vectorizer:
         }
     
     def load_image(self, path: str) -> bool:
-        """Load image from file path"""
+        """Загрузить изображение из файла"""
         try:
-            # Try with OpenCV first
-            if isinstance(path, str) and Path(path).exists():
-                self._original_image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-            elif isinstance(path, bytes):
-                # Handle raw bytes
-                self._original_image = cv2.imdecode(np.frombuffer(path, np.uint8), cv2.IMREAD_UNCHANGED)
+            if CV_AVAILABLE:
+                # Используем OpenCV
+                if isinstance(path, str) and Path(path).exists():
+                    self._original_image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+                elif isinstance(path, bytes):
+                    self._original_image = cv2.imdecode(np.frombuffer(path, np.uint8), cv2.IMREAD_UNCHANGED)
+                else:
+                    return False
+                
+                if self._original_image is None:
+                    return False
+                
+                # Конвертируем BGR в RGB
+                if len(self._original_image.shape) == 3 and self._original_image.shape[2] == 3:
+                    self._original_image = cv2.cvtColor(self._original_image, cv2.COLOR_BGR2RGB)
             else:
-                return False
-            
-            if self._original_image is None:
-                return False
-            
-            # Convert BGR to RGB if needed
-            if len(self._original_image.shape) == 3 and self._original_image.shape[2] == 3:
-                self._original_image = cv2.cvtColor(self._original_image, cv2.COLOR_BGR2RGB)
+                # Используем PIL
+                with Image.open(path) as img:
+                    self._original_image = np.array(img)
+                    if len(self._original_image.shape) == 3 and self._original_image.shape[2] == 4:
+                        # RGBA to RGB
+                        self._original_image = self._original_image[:, :, :3]
             
             self._image = self._original_image.copy()
             self._contours = []
@@ -144,16 +189,16 @@ class Vectorizer:
             return True
             
         except Exception as e:
-            print(f"Error loading image: {e}")
+            print(f"Ошибка загрузки изображения: {e}")
             return False
     
     def load_image_from_pil(self, pil_image: Image.Image) -> bool:
-        """Load image from PIL Image"""
+        """Загрузить изображение из PIL Image"""
         try:
             self._original_image = np.array(pil_image)
             if len(self._original_image.shape) == 3 and self._original_image.shape[2] == 4:
                 # RGBA to RGB
-                self._original_image = cv2.cvtColor(self._original_image, cv2.COLOR_RGBA2RGB)
+                self._original_image = self._original_image[:, :, :3]
             elif len(self._original_image.shape) == 3 and self._original_image.shape[2] == 3:
                 # Ensure RGB
                 pass
@@ -163,11 +208,11 @@ class Vectorizer:
             self._roi = None
             return True
         except Exception as e:
-            print(f"Error loading PIL image: {e}")
+            print(f"Ошибка загрузки PIL изображения: {e}")
             return False
     
     def get_image(self) -> Optional[np.ndarray]:
-        """Get current image (with ROI applied if set)"""
+        """Получить текущее изображение (с применённым ROI)"""
         if self._image is None:
             return None
         
@@ -180,109 +225,126 @@ class Vectorizer:
         return img
     
     def get_original_image(self) -> Optional[np.ndarray]:
-        """Get original image without any modifications"""
+        """Получить оригинальное изображение"""
         return self._original_image
     
     def set_roi(self, roi: ROI) -> None:
-        """Set region of interest for cropping"""
+        """Установить область интереса"""
         self._roi = roi
     
     def clear_roi(self) -> None:
-        """Clear region of interest"""
+        """Очистить область интереса"""
         self._roi = None
     
     def get_roi(self) -> Optional[ROI]:
-        """Get current ROI"""
+        """Получить текущий ROI"""
         return self._roi
     
     def set_parameter(self, name: str, value: Any) -> None:
-        """Set vectorization parameter"""
+        """Установить параметр векторизации"""
         if name in self._parameters:
             self._parameters[name] = value
     
     def get_parameter(self, name: str) -> Any:
-        """Get vectorization parameter"""
+        """Получить параметр векторизации"""
         return self._parameters.get(name)
     
     def _preprocess_image(self, img: np.ndarray) -> np.ndarray:
-        """Preprocess image for edge detection"""
-        # Convert to grayscale
+        """Предобработка изображения для обнаружения краёв"""
+        # Конвертируем в оттенки серого
         if len(img.shape) == 3:
-            gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            if CV_AVAILABLE:
+                gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            else:
+                # Ручная конвертация в оттенки серого
+                gray = np.dot(img[...,:3], [0.2989, 0.5870, 0.1140]).astype(np.uint8)
         else:
             gray = img.copy()
         
-        # Apply Gaussian blur
+        # Применяем размытие по Гауссу
         blur = self._parameters['blur_radius']
         if blur > 0:
-            gray = cv2.GaussianBlur(gray, (0, 0), sigmaX=blur)
+            if CV_AVAILABLE:
+                gray = cv2.GaussianBlur(gray, (0, 0), sigmaX=blur)
+            elif SCIPY_AVAILABLE:
+                gray = ndimage.gaussian_filter(gray, sigma=blur)
         
         return gray
     
     def _detect_edges(self, gray: np.ndarray) -> np.ndarray:
-        """Detect edges using Canny"""
-        thresh1 = self._parameters['canny_threshold1']
-        thresh2 = self._parameters['canny_threshold2']
-        edges = cv2.Canny(gray, thresh1, thresh2, apertureSize=3)
-        return edges
+        """Обнаружение краёв с помощью Кэнни"""
+        if CV_AVAILABLE:
+            thresh1 = self._parameters['canny_threshold1']
+            thresh2 = self._parameters['canny_threshold2']
+            edges = cv2.Canny(gray, thresh1, thresh2, apertureSize=3)
+            return edges
+        else:
+            # Фоллбэк: простой пороговый фильтр
+            thresh = self._parameters['canny_threshold1']
+            edges = gray > thresh
+            return edges.astype(np.uint8) * 255
     
     def _find_contours(self, edges: np.ndarray) -> List[np.ndarray]:
-        """Find contours from edge image"""
-        # Use OpenCV's findContours
-        contours, hierarchy = cv2.findContours(
-            edges, 
-            cv2.RETR_TREE, 
-            cv2.CHAIN_APPROX_SIMPLE
-        )
-        
-        # Convert to list of numpy arrays
-        return [c.squeeze() for c in contours]
+        """Поиск контуров из изображения краёв"""
+        if CV_AVAILABLE:
+            contours, hierarchy = cv2.findContours(
+                edges, 
+                cv2.RETR_TREE, 
+                cv2.CHAIN_APPROX_SIMPLE
+            )
+            return [c.squeeze() for c in contours]
+        elif SKIMAGE_AVAILABLE:
+            # Используем scikit-image
+            contours = find_contours(edges, level=0.5)
+            return [c.astype(np.float32) for c in contours]
+        else:
+            # Простой фоллбэк
+            return []
     
     def _filter_contours(self, contours: List[np.ndarray]) -> List[Contour]:
-        """Filter and process contours"""
+        """Фильтрация и обработка контуров"""
         results = []
         
-        # Get image dimensions for filtering
         img = self.get_image()
         if img is None:
             return results
         
         img_height, img_width = img.shape[:2]
-        min_area = 10  # Minimum area for a contour
+        min_area = 10
         
         for i, contour in enumerate(contours):
             if len(contour) < 3:
                 continue
             
-            # Calculate area
-            area = cv2.contourArea(contour)
+            # Вычисляем площадь
+            if CV_AVAILABLE:
+                area = cv2.contourArea(contour)
+            else:
+                # Ручной расчёт площади
+                area = abs(np.sum(
+                    contour[:, 0] * np.roll(contour[:, 1], 1) - 
+                    contour[:, 1] * np.roll(contour[:, 0], 1)
+                )) / 2
+            
             if area < min_area:
                 continue
             
-            # Check if contour is too large (likely background)
-            bounding_rect = cv2.boundingRect(contour)
+            # Проверяем, не покрывает ли контур всю картинку (фон)
+            bounding_rect = cv2.boundingRect(contour) if CV_AVAILABLE else (0, 0, img_width, img_height)
             x, y, w, h = bounding_rect
             
-            # If contour covers most of the image, it's likely the background
             if self._parameters['remove_background']:
                 area_ratio = (w * h) / (img_width * img_height)
                 if area_ratio > 0.95:
-                    # This is the background, skip it
-                    # But we want the external silhouette
-                    # For now, skip very large contours
                     continue
             
-            # Create Contour object
+            # Создаём объект Contour
             points = [(float(p[0]), float(p[1])) for p in contour]
             
-            # Determine if it's external or internal
-            # Hierarchy: [Next, Previous, First_Child, Parent]
-            # For RETR_TREE: positive hierarchy[3] means it's a hole
-            # We'll use a simpler approach: check if contour is convex
+            # Определяем, внешний это контур или внутренний
             is_external = True
             if self._parameters['detect_internal_edges']:
-                # Check if this contour is inside another
-                # For now, mark all as external
+                # Для простоты помечаем все как внешние
                 pass
             
             results.append(Contour(
@@ -296,26 +358,26 @@ class Vectorizer:
     
     def vectorize(self) -> List[Contour]:
         """
-        Main vectorization method
-        Converts current image to vector contours
+        Главный метод векторизации
+        Преобразует текущее изображение в векторные контуры
         """
         img = self.get_image()
         if img is None:
             return []
         
-        # Preprocess
+        # Предобработка
         gray = self._preprocess_image(img)
         
-        # Detect edges
+        # Обнаружение краёв
         edges = self._detect_edges(gray)
         
-        # Find contours
+        # Поиск контуров
         contours = self._find_contours(edges)
         
-        # Filter and create Contour objects
+        # Фильтрация и создание объектов Contour
         self._contours = self._filter_contours(contours)
         
-        # Simplify contours
+        # Упрощение контуров
         epsilon = self._parameters['simplification_epsilon']
         if epsilon > 0:
             self._contours = [c.simplify(epsilon) for c in self._contours]
@@ -323,19 +385,19 @@ class Vectorizer:
         return self._contours
     
     def get_contours(self) -> List[Contour]:
-        """Get current contours"""
+        """Получить текущие контуры"""
         return self._contours
     
     def clear_contours(self) -> None:
-        """Clear all contours"""
+        """Очистить все контуры"""
         self._contours = []
     
     def get_silhouette(self) -> Optional[Contour]:
-        """Get the main external silhouette (largest contour)"""
+        """Получить основной внешний силуэт (самый большой контур)"""
         if not self._contours:
             return None
         
-        # Find largest contour by area
+        # Находим самый большой контур по площади
         max_area = -1
         max_contour = None
         
@@ -343,9 +405,12 @@ class Vectorizer:
             if not contour.is_external:
                 continue
             
-            # Calculate area using shoelace formula
+            # Вычисляем площадь с помощью формулы шнурка
             pts = contour.to_numpy()
-            area = cv2.contourArea(pts)
+            if CV_AVAILABLE:
+                area = cv2.contourArea(pts)
+            else:
+                area = abs(np.sum(pts[:, 0] * np.roll(pts[:, 1], 1) - pts[:, 1] * np.roll(pts[:, 0], 1))) / 2
             
             if area > max_area:
                 max_area = area
@@ -354,11 +419,11 @@ class Vectorizer:
         return max_contour
     
     def get_internal_contours(self) -> List[Contour]:
-        """Get all internal contours (holes, details)"""
+        """Получить все внутренние контуры (дырки, детали)"""
         return [c for c in self._contours if not c.is_external]
     
     def to_svg(self, width: int = 1024, height: int = 1024) -> str:
-        """Convert contours to SVG string"""
+        """Преобразовать контуры в SVG"""
         parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">']
         
         for contour in self._contours:
@@ -371,7 +436,7 @@ class Vectorizer:
         return '\n'.join(parts)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Export contours to dictionary for JSON serialization"""
+        """Экспорт контуров в словарь для сериализации в JSON"""
         return {
             'contours': [
                 {
@@ -387,7 +452,7 @@ class Vectorizer:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Vectorizer':
-        """Create vectorizer from dictionary"""
+        """Создать векторизатор из словаря"""
         vec = cls()
         vec._contours = [
             Contour(
@@ -404,7 +469,7 @@ class Vectorizer:
 
 
 def create_vectorizer_from_file(path: str) -> Optional[Vectorizer]:
-    """Convenience function to create and load vectorizer from file"""
+    """Удобная функция для создания и загрузки векторизатора из файла"""
     vec = Vectorizer()
     if vec.load_image(path):
         return vec
